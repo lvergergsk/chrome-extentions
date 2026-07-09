@@ -3,8 +3,14 @@
   "name": "Utils",
   "description": "Personal utility extension starter.",
   "version": "0.1.0",
+  "host_permissions": [
+    "http://127.0.0.1:8787/*"
+  ],
   "action": {
     "default_title": "Utils",
     "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
   }
 }

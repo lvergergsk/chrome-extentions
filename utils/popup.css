@@ -9,7 +9,7 @@
 
 body {
   margin: 0;
-  min-width: 280px;
+  min-width: 320px;
   color: #1f2937;
   background: #f8fafc;
 }
@@ -50,9 +50,35 @@ button:hover {
   background: #1d4ed8;
 }
 
+button.secondary {
+  color: #1f2937;
+  background: #e2e8f0;
+}
+
+button.secondary:hover {
+  background: #cbd5e1;
+}
+
 button:focus-visible {
   outline: 3px solid #93c5fd;
   outline-offset: 2px;
+}
+
+pre {
+  min-height: 80px;
+  max-height: 180px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 10px;
+  color: #334155;
+  background: #ffffff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -63,5 +89,20 @@ button:focus-visible {
 
   p {
     color: #cbd5e1;
+  }
+
+  button.secondary {
+    color: #e5e7eb;
+    background: #374151;
+  }
+
+  button.secondary:hover {
+    background: #4b5563;
+  }
+
+  pre {
+    border-color: #475569;
+    color: #d1d5db;
+    background: #1f2937;
   }
 }

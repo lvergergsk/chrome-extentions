@@ -4,6 +4,7 @@
   "private": true,
   "description": "Personal Chrome extensions.",
   "scripts": {
+    "api:utils": "node utils/dev/local-api-server.mjs",
     "test": "node .github/scripts/validate-extensions.mjs"
   },
   "engines": {
