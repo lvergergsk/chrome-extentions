@@ -36,3 +36,5 @@ After starting the local API server, reload the unpacked extension and click **C
 ## Package Later
 
 Keep each extension self-contained in its own folder so public, private, and experimental extensions can evolve independently.
+
+See [PUBLISHING.md](PUBLISHING.md) when an extension is ready for the Chrome Web Store.
