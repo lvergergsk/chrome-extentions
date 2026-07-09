@@ -1,0 +1,17 @@
+.DS_Store
+Thumbs.db
+
+# Chrome extension packaged outputs
+*.crx
+*.pem
+*.zip
+
+# Dependency/build folders, if an extension later gets a build step
+node_modules/
+dist/
+build/
+coverage/
+
+# Local environment files
+.env
+.env.*

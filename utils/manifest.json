@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Utils",
+  "description": "Personal utility extension starter.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Utils",
+    "default_popup": "popup.html"
+  }
+}

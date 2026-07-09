@@ -1,0 +1,12 @@
+{
+  "name": "chrome-extensions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal Chrome extensions.",
+  "scripts": {
+    "test": "node .github/scripts/validate-extensions.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
