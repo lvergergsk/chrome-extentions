@@ -2,7 +2,12 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { UTILS_EXTENSION_ID, findUnpackedInstall } from "./extension-id.js";
+import {
+  DEFAULT_PROFILE_EMAIL,
+  UTILS_EXTENSION_ID,
+  findProfileByEmail,
+  findUnpackedInstall,
+} from "./extension-id.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const utilsDir = path.join(repoRoot, "utils");
@@ -38,19 +43,30 @@ if (!chromePath) {
   process.exit(1);
 }
 
-const profileDir = path.join(process.env.LOCALAPPDATA ?? "", "Google/Chrome/User Data/Default");
+const userDataDir = path.join(process.env.LOCALAPPDATA ?? "", "Google/Chrome/User Data");
+const localStatePath = path.join(userDataDir, "Local State");
+const infoCache = existsSync(localStatePath) ? (JSON.parse(readFileSync(localStatePath, "utf8")).profile?.info_cache ?? {}) : {};
+const profile = findProfileByEmail(infoCache, DEFAULT_PROFILE_EMAIL);
+if (!profile) {
+  console.error(`找不到 Chrome profile：${DEFAULT_PROFILE_EMAIL}`);
+  process.exit(1);
+}
+
+const profileDir = path.join(userDataDir, profile.dir);
 const settings = {
   ...readSettings(path.join(profileDir, "Preferences")),
   ...readSettings(path.join(profileDir, "Secure Preferences")),
 };
 const installed = findUnpackedInstall(settings, { id: UTILS_EXTENSION_ID, path: utilsDir });
 const reloadUrl = `chrome-extension://${UTILS_EXTENSION_ID}/reload.html`;
+const chromeArgs = (url) => [`--profile-directory=${profile.dir}`, url];
 
 if (mode === "open" || (mode === "auto" && !installed)) {
-  launch(chromePath, ["chrome://extensions"]);
+  launch(chromePath, chromeArgs("chrome://extensions"));
   if (process.platform === "win32") {
     launch("explorer.exe", [`/select,${utilsDir}`]);
   }
+  console.log(`目标 profile：${profile.email}（${profile.dir}）`);
   console.log("Chrome 151 已去掉 --load-extension，第一次安装还是要点一次「加载已解压的扩展程序」。");
   console.log(`已打开扩展页。选中这个文件夹：${utilsDir}`);
   process.exit(0);
@@ -61,5 +77,6 @@ if (!installed) {
   process.exit(1);
 }
 
-launch(chromePath, [reloadUrl]);
+launch(chromePath, chromeArgs(reloadUrl));
+console.log(`目标 profile：${profile.email}（${profile.dir}）`);
 console.log(`已请求重新加载 Utils（${installed.id}）。刷新 x.com 即可用新代码。`);

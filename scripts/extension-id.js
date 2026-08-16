@@ -18,6 +18,22 @@ export function normalizeFsPath(value) {
   return path.normalize(String(value ?? "")).replace(/[\\/]+$/, "").toLowerCase();
 }
 
+export const DEFAULT_PROFILE_EMAIL = "lvergergsk@gmail.com";
+
+export function findProfileByEmail(infoCache, email) {
+  const wanted = String(email ?? "").trim().toLowerCase();
+  if (!wanted) {
+    return null;
+  }
+  for (const [dir, info] of Object.entries(infoCache ?? {})) {
+    const user = String(info?.user_name ?? "").trim().toLowerCase();
+    if (user === wanted) {
+      return { dir, email: info.user_name };
+    }
+  }
+  return null;
+}
+
 export function findUnpackedInstall(settings, { id, path: expectedPath }) {
   const expectedId = String(id ?? "");
   const expected = normalizeFsPath(expectedPath);

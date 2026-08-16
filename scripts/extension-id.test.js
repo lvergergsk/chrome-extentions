@@ -3,6 +3,8 @@ import test from "node:test";
 import {
   UTILS_EXTENSION_ID,
   extensionIdFromChromeKey,
+  DEFAULT_PROFILE_EMAIL,
+  findProfileByEmail,
   findUnpackedInstall,
 } from "./extension-id.js";
 
@@ -12,6 +14,17 @@ const SAMPLE_KEY =
 test("extensionIdFromChromeKey maps the committed Utils public key", () => {
   assert.equal(extensionIdFromChromeKey(SAMPLE_KEY), "ehjdfopanjodgalngpkkflldabbjflmh");
   assert.equal(UTILS_EXTENSION_ID, "ehjdfopanjodgalngpkkflldabbjflmh");
+});
+
+test("findProfileByEmail maps the personal Gmail profile directory", () => {
+  const found = findProfileByEmail(
+    {
+      Default: { user_name: "lvergergsk@gmail.com" },
+      "Profile 1": { user_name: "youlyuzhang.work@gmail.com" },
+    },
+    DEFAULT_PROFILE_EMAIL,
+  );
+  assert.equal(found.dir, "Default");
 });
 
 test("findUnpackedInstall matches a loc-4 path or the stable id", () => {
