@@ -403,6 +403,12 @@
     return firstOwnMatch(article, MEDIA_HOSTS);
   }
 
+  // X swaps the testid to "unlike" once a post is liked, so a null result means
+  // there is nothing to do rather than that the button is missing.
+  function findLikeButton(article) {
+    return firstOwnMatch(article, '[data-testid="like"]');
+  }
+
   // The last cell of X's action bar (the share cell) is a single-column grid, so
   // appending into it stacks the button *under* share. Add a sibling cell instead
   // so the button sits in the row, right after share.
@@ -420,6 +426,7 @@
     downloadFilename,
     extractTweetId,
     findActionHost,
+    findLikeButton,
     findMediaHost,
     firstOwnMatch,
     harvestTweetMedia,

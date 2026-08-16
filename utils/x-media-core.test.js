@@ -8,6 +8,7 @@ const {
   extractTweetId,
   attachDownloadButton,
   findActionHost,
+  findLikeButton,
   findMediaHost,
   firstOwnMatch,
   harvestTweetMedia,
@@ -399,6 +400,30 @@ test("attachDownloadButton adds a sibling cell instead of nesting inside share",
   const root = { classList: { add() {} } };
   assert.equal(attachDownloadButton(host, root), true);
   assert.deepEqual(appended, [["host", root]]);
+});
+
+test("findLikeButton finds an unliked post's button and skips a liked one", () => {
+  const article = {};
+  const like = ownNode(article);
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="like"]': [like],
+  }).querySelectorAll;
+  assert.equal(findLikeButton(article), like);
+
+  const liked = {};
+  liked.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="like"]': [],
+  }).querySelectorAll;
+  assert.equal(findLikeButton(liked), null);
+});
+
+test("findLikeButton ignores a like button inside a quoted article", () => {
+  const article = {};
+  const other = {};
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="like"]': [ownNode(other)],
+  }).querySelectorAll;
+  assert.equal(findLikeButton(article), null);
 });
 
 test("findMediaHost returns this article's video player", () => {

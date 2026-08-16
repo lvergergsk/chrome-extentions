@@ -7,6 +7,7 @@
     collectDomMedia,
     extractTweetId,
     findActionHost,
+    findLikeButton,
     findMediaHost,
     isMediaList,
     tweetHasVisibleMedia,
@@ -77,6 +78,9 @@
     });
     if (response?.ok && response.count > 0) {
       setStatus(root, `已开始下载 ${response.count} 个文件`, "ok");
+      // Only like once media is actually downloading, so a failed lookup never
+      // leaves a like behind. Already-liked posts expose no "like" button.
+      findLikeButton(article)?.click();
     } else {
       setStatus(root, "没有找到可下载的媒体", "error");
     }
