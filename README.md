@@ -8,11 +8,18 @@
 
 ## 本地加载
 
-1. 打开 `chrome://extensions`。
-2. 打开开发者模式。
-3. 点击 **加载已解压的扩展程序**。
-4. 选择扩展文件夹，例如 `utils`。
-5. 打开 `x.com` 或 `twitter.com`。带图片或视频的帖子会在操作栏出现下载按钮。
+Chrome 151 已去掉 `--load-extension`，**第一次安装必须在扩展页点一次「加载已解压的扩展程序」**。装过之后可以用脚本更新：
+
+```powershell
+npm run load      # 未安装：打开扩展页并选中 utils 文件夹
+npm run reload    # 已安装：请求 Chrome 重新加载 Utils
+```
+
+手动步骤（只在第一次）：
+
+1. 打开 `chrome://extensions`，打开开发者模式。
+2. 点击 **加载已解压的扩展程序**，选 `utils`。
+3. 打开 `x.com` 或 `twitter.com`。带图片或视频的帖子会在操作栏出现下载按钮。
 
 ## 以后打包
 
