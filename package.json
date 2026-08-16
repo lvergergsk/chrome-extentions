@@ -5,7 +5,9 @@
   "description": "Personal Chrome extensions.",
   "type": "module",
   "scripts": {
-    "test": "node --test utils/x-media-core.test.js && node .github/scripts/validate-extensions.mjs"
+    "test": "node --test utils/x-media-core.test.js scripts/extension-id.test.js && node .github/scripts/validate-extensions.mjs",
+    "load": "node scripts/load-utils.mjs",
+    "reload": "node scripts/load-utils.mjs --reload"
   },
   "engines": {
     "node": ">=20"

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../..");
-const ignoredRootDirs = new Set(["node_modules", "dist", "build", "coverage"]);
+const ignoredRootDirs = new Set(["node_modules", "dist", "build", "coverage", "scripts"]);
 
 const errors = [];
 
