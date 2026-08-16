@@ -1,4 +1,4 @@
-import {
+const {
   attachDownloadButton,
   collectDomMedia,
   extractTweetId,
@@ -6,7 +6,7 @@ import {
   findMediaHost,
   isMediaList,
   tweetHasVisibleMedia,
-} from "./x-media-core.js";
+} = globalThis.UtilsXMedia;
 
 const SOURCE = "utils-x-media";
 const ROOT_ATTR = "data-utils-x-download";

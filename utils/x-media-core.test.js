@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
+import "./x-media-core.js";
+
+const {
   collectDomMedia,
   downloadFilename,
   extractTweetId,
@@ -17,7 +19,7 @@ import {
   syndicationUrl,
   toOriginalImageUrl,
   tweetHasVisibleMedia,
-} from "./x-media-core.js";
+} = globalThis.UtilsXMedia;
 
 test("syndicationToken matches the known react-tweet formula", () => {
   assert.equal(syndicationToken("719484841172054016"), "1qsbtgrhag1");

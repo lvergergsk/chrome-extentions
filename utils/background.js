@@ -1,11 +1,13 @@
-import {
+import "./x-media-core.js";
+
+const {
   downloadFilename,
   harvestTweetMedia,
   isAllowedMediaUrl,
   isMediaList,
   mergeMedia,
   syndicationUrl,
-} from "./x-media-core.js";
+} = globalThis.UtilsXMedia;
 
 const cache = new Map();
 

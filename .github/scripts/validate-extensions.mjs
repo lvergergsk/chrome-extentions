@@ -84,6 +84,15 @@ const validateExtension = async (entryName) => {
   for (const [index, script] of Object.entries(manifest.content_scripts ?? [])) {
     for (const jsFile of script.js ?? []) {
       await requireReferencedFile(extensionDir, jsFile, `${entryName} content_scripts[${index}].js`);
+      if (script.type === "module") {
+        continue;
+      }
+      const source = await readFile(path.resolve(extensionDir, jsFile), "utf8");
+      if (/^\s*(import|export)\s/m.test(source)) {
+        errors.push(
+          `${entryName} content_scripts[${index}].js ${jsFile} uses import/export but is not type:module`,
+        );
+      }
     }
 
     for (const cssFile of script.css ?? []) {

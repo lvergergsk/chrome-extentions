@@ -1,16 +1,16 @@
 const ALLOWED_HOSTS = new Set(["pbs.twimg.com", "video.twimg.com"]);
 const VIDEO_THUMB_RE = /\/(ext_tw_video_thumb|tweet_video_thumb|amplify_video_thumb)\//i;
 
-export function syndicationToken(tweetId) {
+function syndicationToken(tweetId) {
   return ((Number(tweetId) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, "");
 }
 
-export function syndicationUrl(tweetId) {
+function syndicationUrl(tweetId) {
   const id = String(tweetId);
   return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(id)}&lang=en&token=${syndicationToken(id)}`;
 }
 
-export function isMediaList(media) {
+function isMediaList(media) {
   return (
     Array.isArray(media) &&
     media.every(
@@ -23,7 +23,7 @@ export function isMediaList(media) {
   );
 }
 
-export function isAllowedMediaUrl(urlString) {
+function isAllowedMediaUrl(urlString) {
   try {
     const url = new URL(urlString);
     return url.protocol === "https:" && ALLOWED_HOSTS.has(url.hostname);
@@ -32,7 +32,7 @@ export function isAllowedMediaUrl(urlString) {
   }
 }
 
-export function toOriginalImageUrl(urlString) {
+function toOriginalImageUrl(urlString) {
   try {
     const url = new URL(urlString);
     if (url.protocol !== "https:" || url.hostname !== "pbs.twimg.com") {
@@ -59,7 +59,7 @@ export function toOriginalImageUrl(urlString) {
   }
 }
 
-export function pickBestMp4(variants) {
+function pickBestMp4(variants) {
   return (variants ?? [])
     .filter((variant) => variant && typeof variant.url === "string")
     .filter((variant) => {
@@ -70,7 +70,7 @@ export function pickBestMp4(variants) {
     .sort((left, right) => (Number(right.bitrate) || 0) - (Number(left.bitrate) || 0))[0] ?? null;
 }
 
-export function extractTweetId(hrefs) {
+function extractTweetId(hrefs) {
   for (const href of hrefs ?? []) {
     const match = String(href).match(/\/status\/(\d+)/);
     if (match) {
@@ -80,7 +80,7 @@ export function extractTweetId(hrefs) {
   return null;
 }
 
-export function downloadFilename(tweetId, index, urlString) {
+function downloadFilename(tweetId, index, urlString) {
   const safeId = String(tweetId ?? "tweet").replace(/[^\dA-Za-z]/g, "").slice(0, 32) || "tweet";
   let extension = "bin";
   try {
@@ -147,7 +147,7 @@ function considerNode(node, into) {
   }
 }
 
-export function harvestTweetMedia(data, into = new Map()) {
+function harvestTweetMedia(data, into = new Map()) {
   const seen = new WeakSet();
   const walk = (value, depth) => {
     if (!value || depth > 30) {
@@ -185,7 +185,7 @@ function urlKey(urlString) {
   }
 }
 
-export function mergeMedia(groups) {
+function mergeMedia(groups) {
   const seen = new Set();
   const merged = [];
   for (const item of (groups ?? []).flat()) {
@@ -210,14 +210,14 @@ function belongsToArticle(node, article) {
   return typeof node.closest === "function" ? node.closest("article") === article : false;
 }
 
-export function firstOwnMatch(article, selector) {
+function firstOwnMatch(article, selector) {
   if (!article || typeof article.querySelectorAll !== "function" || typeof selector !== "string") {
     return null;
   }
   return [...article.querySelectorAll(selector)].find((node) => belongsToArticle(node, article)) ?? null;
 }
 
-export function collectDomMedia(article) {
+function collectDomMedia(article) {
   if (!article || typeof article.querySelectorAll !== "function") {
     return [];
   }
@@ -248,7 +248,7 @@ const VISIBLE_MEDIA = [
   'a[href*="/video/"]',
 ].join(", ");
 
-export function tweetHasVisibleMedia(article) {
+function tweetHasVisibleMedia(article) {
   if (!article || typeof article.querySelectorAll !== "function") {
     return false;
   }
@@ -305,7 +305,7 @@ function actionBarFrom(seed, article) {
   return null;
 }
 
-export function findActionHost(article) {
+function findActionHost(article) {
   if (!article || typeof article.querySelectorAll !== "function") {
     return null;
   }
@@ -343,11 +343,11 @@ export function findActionHost(article) {
   return null;
 }
 
-export function findMediaHost(article) {
+function findMediaHost(article) {
   return firstOwnMatch(article, MEDIA_HOSTS);
 }
 
-export function attachDownloadButton(host, root) {
+function attachDownloadButton(host, root) {
   if (!host || typeof host.append !== "function" || !root) {
     return false;
   }
@@ -360,3 +360,22 @@ export function attachDownloadButton(host, root) {
   host.append(root);
   return true;
 }
+
+globalThis.UtilsXMedia = {
+  attachDownloadButton,
+  collectDomMedia,
+  downloadFilename,
+  extractTweetId,
+  findActionHost,
+  findMediaHost,
+  firstOwnMatch,
+  harvestTweetMedia,
+  isAllowedMediaUrl,
+  isMediaList,
+  mergeMedia,
+  pickBestMp4,
+  syndicationToken,
+  syndicationUrl,
+  toOriginalImageUrl,
+  tweetHasVisibleMedia,
+};

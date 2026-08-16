@@ -1,4 +1,4 @@
-import { harvestTweetMedia } from "./x-media-core.js";
+const { harvestTweetMedia } = globalThis.UtilsXMedia;
 
 const SOURCE = "utils-x-media";
 
