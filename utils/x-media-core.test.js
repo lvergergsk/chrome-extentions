@@ -4,7 +4,9 @@ import {
   collectDomMedia,
   downloadFilename,
   extractTweetId,
+  attachDownloadButton,
   findActionHost,
+  findMediaHost,
   firstOwnMatch,
   harvestTweetMedia,
   isAllowedMediaUrl,
@@ -258,4 +260,77 @@ test("findActionHost falls back to a role=group with several buttons", () => {
   };
   article.querySelectorAll = (selector) => (selector === '[role="group"]' ? [actionGroup] : []);
   assert.equal(findActionHost(article), actionGroup);
+});
+
+test("findActionHost walks past an inner bookmark group to the action bar", () => {
+  const article = {};
+  const bookmark = {};
+  const like = {};
+  const innerGroup = {
+    querySelector: (selector) => (selector.includes("bookmark") ? bookmark : null),
+    closest: (selector) => (selector === "article" ? article : innerGroup),
+    parentElement: null,
+  };
+  const outerGroup = {
+    querySelector: (selector) => {
+      if (selector.includes("bookmark")) {
+        return bookmark;
+      }
+      if (selector.includes("like")) {
+        return like;
+      }
+      return null;
+    },
+    closest: (selector) => (selector === "article" ? article : outerGroup),
+    parentElement: null,
+  };
+  innerGroup.parentElement = outerGroup;
+  bookmark.closest = (selector) => {
+    if (selector === "article") {
+      return article;
+    }
+    if (selector === '[role="group"]') {
+      return innerGroup;
+    }
+    return null;
+  };
+  bookmark.parentElement = innerGroup;
+  article.querySelectorAll = (selector) => {
+    if (selector.includes("bookmark")) {
+      return [bookmark];
+    }
+    if (selector.includes("like")) {
+      return [like];
+    }
+    return [];
+  };
+
+  assert.equal(findActionHost(article), outerGroup);
+});
+
+test("attachDownloadButton puts the control in the last action cell", () => {
+  const appended = [];
+  const shareCell = {
+    append(node) {
+      appended.push(["cell", node]);
+    },
+  };
+  const host = {
+    lastElementChild: shareCell,
+    append(node) {
+      appended.push(["host", node]);
+    },
+  };
+  const root = { classList: { add() {} } };
+  assert.equal(attachDownloadButton(host, root), true);
+  assert.deepEqual(appended, [["cell", root]]);
+});
+
+test("findMediaHost returns this article's video player", () => {
+  const article = {};
+  const player = ownNode(article);
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="videoPlayer"]': [player],
+  }).querySelectorAll;
+  assert.equal(findMediaHost(article), player);
 });
