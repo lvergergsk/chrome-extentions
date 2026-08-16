@@ -1,10 +1,53 @@
 {
   "manifest_version": 3,
   "name": "Utils",
-  "description": "Personal utility extension starter.",
-  "version": "0.1.0",
+  "description": "Personal utilities, including X image and video download.",
+  "version": "0.2.0",
   "action": {
     "default_title": "Utils",
     "default_popup": "popup.html"
-  }
+  },
+  "permissions": [
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://pbs.twimg.com/*",
+    "https://video.twimg.com/*",
+    "https://cdn.syndication.twimg.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "x-media-page.js"
+      ],
+      "world": "MAIN",
+      "type": "module",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": [
+        "x-media.js"
+      ],
+      "css": [
+        "x-media.css"
+      ],
+      "world": "ISOLATED",
+      "type": "module",
+      "run_at": "document_idle"
+    }
+  ]
 }
