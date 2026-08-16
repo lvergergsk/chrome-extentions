@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
+import "./x-media-core.js";
+
+const {
   collectDomMedia,
   downloadFilename,
   extractTweetId,
+  attachDownloadButton,
+  findActionHost,
+  findMediaHost,
   firstOwnMatch,
   harvestTweetMedia,
   isAllowedMediaUrl,
@@ -14,7 +19,7 @@ import {
   syndicationUrl,
   toOriginalImageUrl,
   tweetHasVisibleMedia,
-} from "./x-media-core.js";
+} = globalThis.UtilsXMedia;
 
 test("syndicationToken matches the known react-tweet formula", () => {
   assert.equal(syndicationToken("719484841172054016"), "1qsbtgrhag1");
@@ -118,6 +123,36 @@ test("harvestTweetMedia reads syndication photos and graphql videos", () => {
   ]);
 });
 
+test("harvestTweetMedia survives React props whose getters throw", () => {
+  // x.com's fiber props expose getters like `store` that throw when touched.
+  const hostile = {};
+  Object.defineProperty(hostile, "store", {
+    enumerable: true,
+    get() {
+      throw new Error("store must be provided");
+    },
+  });
+  Object.defineProperty(hostile, "rest_id", {
+    enumerable: true,
+    get() {
+      throw new Error("store must be provided");
+    },
+  });
+  hostile.tweet = {
+    rest_id: "77",
+    legacy: {
+      extended_entities: {
+        media: [{ type: "photo", media_url_https: "https://pbs.twimg.com/media/AbCdEf.jpg" }],
+      },
+    },
+  };
+
+  const harvested = harvestTweetMedia(hostile);
+  assert.deepEqual(harvested.get("77"), [
+    { kind: "photo", url: "https://pbs.twimg.com/media/AbCdEf?format=jpg&name=orig" },
+  ]);
+});
+
 test("mergeMedia dedupes and drops video thumbnails when a video exists", () => {
   const merged = mergeMedia([
     [{ kind: "photo", url: "https://pbs.twimg.com/ext_tw_video_thumb/99/pu/img/thumb.jpg" }],
@@ -187,4 +222,153 @@ test("tweetHasVisibleMedia ignores quoted nested articles", () => {
     },
   };
   assert.equal(tweetHasVisibleMedia(article), false);
+});
+
+const ownNode = (article) => ({ closest: () => article });
+
+const articleWithSelectorHits = (hits) => ({
+  querySelectorAll(selector) {
+    const matched = [];
+    for (const part of selector.split(",").map((item) => item.trim())) {
+      matched.push(...(hits[part] ?? []));
+    }
+    return matched;
+  },
+});
+
+test("tweetHasVisibleMedia detects unplayed video posters and videoComponent", () => {
+  const posterArticle = {};
+  posterArticle.querySelectorAll = articleWithSelectorHits({
+    'img[src*="pbs.twimg.com/ext_tw_video_thumb"]': [ownNode(posterArticle)],
+  }).querySelectorAll;
+  assert.equal(tweetHasVisibleMedia(posterArticle), true);
+
+  const componentArticle = {};
+  componentArticle.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="videoComponent"]': [ownNode(componentArticle)],
+  }).querySelectorAll;
+  assert.equal(tweetHasVisibleMedia(componentArticle), true);
+});
+
+test("findActionHost prefers the bookmark group over video controls", () => {
+  const article = {};
+  const bookmark = {};
+  const like = {};
+  const videoGroup = {
+    querySelector: () => null,
+    querySelectorAll: () => [{}, {}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : videoGroup),
+  };
+  const actionGroup = {
+    querySelector: (selector) => {
+      if (selector.includes("bookmark")) {
+        return bookmark;
+      }
+      if (selector.includes("like")) {
+        return like;
+      }
+      return null;
+    },
+    querySelectorAll: () => [{}, {}, {}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : actionGroup),
+  };
+  bookmark.closest = (selector) => (selector === "article" ? article : actionGroup);
+  bookmark.parentElement = actionGroup;
+  article.querySelectorAll = (selector) => {
+    if (selector.includes("bookmark")) {
+      return [bookmark];
+    }
+    if (selector.includes("like")) {
+      return [like];
+    }
+    if (selector === '[role="group"]') {
+      return [videoGroup, actionGroup];
+    }
+    return [];
+  };
+
+  assert.equal(findActionHost(article), actionGroup);
+});
+
+test("findActionHost falls back to a role=group with several buttons", () => {
+  const article = {};
+  const actionGroup = {
+    querySelectorAll: () => [{}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : null),
+  };
+  article.querySelectorAll = (selector) => (selector === '[role="group"]' ? [actionGroup] : []);
+  assert.equal(findActionHost(article), actionGroup);
+});
+
+test("findActionHost walks past an inner bookmark group to the action bar", () => {
+  const article = {};
+  const bookmark = {};
+  const like = {};
+  const innerGroup = {
+    querySelector: (selector) => (selector.includes("bookmark") ? bookmark : null),
+    closest: (selector) => (selector === "article" ? article : innerGroup),
+    parentElement: null,
+  };
+  const outerGroup = {
+    querySelector: (selector) => {
+      if (selector.includes("bookmark")) {
+        return bookmark;
+      }
+      if (selector.includes("like")) {
+        return like;
+      }
+      return null;
+    },
+    closest: (selector) => (selector === "article" ? article : outerGroup),
+    parentElement: null,
+  };
+  innerGroup.parentElement = outerGroup;
+  bookmark.closest = (selector) => {
+    if (selector === "article") {
+      return article;
+    }
+    if (selector === '[role="group"]') {
+      return innerGroup;
+    }
+    return null;
+  };
+  bookmark.parentElement = innerGroup;
+  article.querySelectorAll = (selector) => {
+    if (selector.includes("bookmark")) {
+      return [bookmark];
+    }
+    if (selector.includes("like")) {
+      return [like];
+    }
+    return [];
+  };
+
+  assert.equal(findActionHost(article), outerGroup);
+});
+
+test("attachDownloadButton adds a sibling cell instead of nesting inside share", () => {
+  const appended = [];
+  const shareCell = {
+    append(node) {
+      appended.push(["cell", node]);
+    },
+  };
+  const host = {
+    lastElementChild: shareCell,
+    append(node) {
+      appended.push(["host", node]);
+    },
+  };
+  const root = { classList: { add() {} } };
+  assert.equal(attachDownloadButton(host, root), true);
+  assert.deepEqual(appended, [["host", root]]);
+});
+
+test("findMediaHost returns this article's video player", () => {
+  const article = {};
+  const player = ownNode(article);
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="videoPlayer"]': [player],
+  }).querySelectorAll;
+  assert.equal(findMediaHost(article), player);
 });

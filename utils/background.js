@@ -1,11 +1,13 @@
-import {
+import "./x-media-core.js";
+
+const {
   downloadFilename,
   harvestTweetMedia,
   isAllowedMediaUrl,
   isMediaList,
   mergeMedia,
   syndicationUrl,
-} from "./x-media-core.js";
+} = globalThis.UtilsXMedia;
 
 const cache = new Map();
 
@@ -63,7 +65,17 @@ const downloadTweet = async ({ tweetId, media }) => {
   return { ok: true, count };
 };
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "utils.reload") {
+    const tabId = sender.tab?.id;
+    if (tabId != null) {
+      chrome.tabs.remove(tabId).catch(() => {});
+    }
+    // Let the response and the tab removal settle before the context disappears.
+    setTimeout(() => chrome.runtime.reload(), 50);
+    sendResponse({ ok: true });
+    return;
+  }
   if (message?.type === "utils.x.cache") {
     cacheMedia(message.tweetId, message.media);
     sendResponse({ ok: true });

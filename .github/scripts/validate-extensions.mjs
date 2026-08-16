@@ -2,6 +2,7 @@ import { access, readFile, readdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../..");
@@ -82,8 +83,32 @@ const validateExtension = async (entryName) => {
   }
 
   for (const [index, script] of Object.entries(manifest.content_scripts ?? [])) {
+    const classicSources = [];
     for (const jsFile of script.js ?? []) {
       await requireReferencedFile(extensionDir, jsFile, `${entryName} content_scripts[${index}].js`);
+      if (script.type === "module") {
+        continue;
+      }
+      const source = await readFile(path.resolve(extensionDir, jsFile), "utf8");
+      classicSources.push(source);
+      if (/^\s*(import|export)\s/m.test(source)) {
+        errors.push(
+          `${entryName} content_scripts[${index}].js ${jsFile} uses import/export but is not type:module`,
+        );
+      }
+    }
+
+    // Chrome runs every classic file of one entry against the same global lexical
+    // scope. A name declared in two of them is a SyntaxError that silently drops the
+    // second file, so compile the concatenation the way the browser would see it.
+    if (classicSources.length > 1) {
+      try {
+        new vm.Script(classicSources.join("\n"), { filename: `${entryName} content_scripts[${index}]` });
+      } catch (error) {
+        errors.push(
+          `${entryName} content_scripts[${index}].js files clash in the shared global scope: ${error.message}`,
+        );
+      }
     }
 
     for (const cssFile of script.css ?? []) {

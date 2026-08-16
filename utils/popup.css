@@ -34,6 +34,12 @@ p {
   line-height: 1.45;
 }
 
+.popup__version {
+  color: #94a3b8;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 button {
   width: 100%;
   min-height: 36px;
@@ -64,4 +70,13 @@ button:focus-visible {
   p {
     color: #cbd5e1;
   }
+
+  .popup__version {
+    color: #64748b;
+  }
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }

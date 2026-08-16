@@ -6,7 +6,9 @@
   --utils-x-glass: rgba(15, 23, 42, 0.42);
   position: relative;
   display: flex;
-  flex: 1 1 0;
+  /* Matches X's own bookmark/share cells so the button joins the row instead of
+     stretching it. */
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   min-width: 36px;
@@ -67,11 +69,12 @@
 }
 
 .utils-x-download--overlay {
-  position: relative;
-  z-index: 2;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
   flex: none;
-  justify-content: flex-end;
-  margin-top: 4px;
+  margin: 0;
 }
 
 .utils-x-download--overlay .utils-x-download__btn {
