@@ -4,6 +4,7 @@ import {
   collectDomMedia,
   downloadFilename,
   extractTweetId,
+  findActionHost,
   firstOwnMatch,
   harvestTweetMedia,
   isAllowedMediaUrl,
@@ -187,4 +188,74 @@ test("tweetHasVisibleMedia ignores quoted nested articles", () => {
     },
   };
   assert.equal(tweetHasVisibleMedia(article), false);
+});
+
+const ownNode = (article) => ({ closest: () => article });
+
+const articleWithSelectorHits = (hits) => ({
+  querySelectorAll(selector) {
+    const matched = [];
+    for (const part of selector.split(",").map((item) => item.trim())) {
+      matched.push(...(hits[part] ?? []));
+    }
+    return matched;
+  },
+});
+
+test("tweetHasVisibleMedia detects unplayed video posters and videoComponent", () => {
+  const posterArticle = {};
+  posterArticle.querySelectorAll = articleWithSelectorHits({
+    'img[src*="pbs.twimg.com/ext_tw_video_thumb"]': [ownNode(posterArticle)],
+  }).querySelectorAll;
+  assert.equal(tweetHasVisibleMedia(posterArticle), true);
+
+  const componentArticle = {};
+  componentArticle.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="videoComponent"]': [ownNode(componentArticle)],
+  }).querySelectorAll;
+  assert.equal(tweetHasVisibleMedia(componentArticle), true);
+});
+
+test("findActionHost prefers the bookmark group over video controls", () => {
+  const article = {};
+  const videoGroup = {
+    querySelectorAll: () => [{}, {}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : videoGroup),
+  };
+  const actionGroup = {
+    querySelectorAll: () => [{}, {}, {}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : actionGroup),
+  };
+  const bookmark = {
+    closest: (selector) => {
+      if (selector === "article") {
+        return article;
+      }
+      if (selector === '[role="group"]') {
+        return actionGroup;
+      }
+      return null;
+    },
+  };
+  article.querySelectorAll = (selector) => {
+    if (selector.includes("bookmark")) {
+      return [bookmark];
+    }
+    if (selector === '[role="group"]') {
+      return [videoGroup, actionGroup];
+    }
+    return [];
+  };
+
+  assert.equal(findActionHost(article), actionGroup);
+});
+
+test("findActionHost falls back to a role=group with several buttons", () => {
+  const article = {};
+  const actionGroup = {
+    querySelectorAll: () => [{}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : null),
+  };
+  article.querySelectorAll = (selector) => (selector === '[role="group"]' ? [actionGroup] : []);
+  assert.equal(findActionHost(article), actionGroup);
 });
