@@ -1,8 +1,9 @@
 import {
+  attachDownloadButton,
   collectDomMedia,
   extractTweetId,
   findActionHost,
-  firstOwnMatch,
+  findMediaHost,
   isMediaList,
   tweetHasVisibleMedia,
 } from "./x-media-core.js";
@@ -140,23 +141,50 @@ const createButton = (article) => {
   return root;
 };
 
+const ownButtons = (article) =>
+  [...article.querySelectorAll(`[${ROOT_ATTR}]`)].filter((node) => node.closest("article") === article);
+
+const pinMediaHost = (media) => {
+  if (!media?.style || typeof getComputedStyle !== "function") {
+    return;
+  }
+  try {
+    if (getComputedStyle(media).position === "static") {
+      media.style.position = "relative";
+    }
+  } catch {
+    // Leave X layout alone if computed style is unavailable.
+  }
+};
+
 const injectArticle = (article) => {
-  const existing = firstOwnMatch(article, `[${ROOT_ATTR}]`);
+  const existing = ownButtons(article);
   if (!tweetHasVisibleMedia(article)) {
-    existing?.remove();
+    for (const node of existing) {
+      node.remove();
+    }
     return;
   }
-  if (existing) {
-    return;
+
+  if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "bar")) {
+    const host = findActionHost(article);
+    if (host) {
+      const root = createButton(article);
+      root.setAttribute(ROOT_ATTR, "bar");
+      attachDownloadButton(host, root);
+    }
   }
-  const root = createButton(article);
-  const host = findActionHost(article);
-  if (host) {
-    host.append(root);
-    return;
+
+  if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "media")) {
+    const media = findMediaHost(article);
+    if (media && typeof media.append === "function") {
+      const root = createButton(article);
+      root.setAttribute(ROOT_ATTR, "media");
+      root.classList.add("utils-x-download--overlay");
+      pinMediaHost(media);
+      media.append(root);
+    }
   }
-  root.classList.add("utils-x-download--overlay");
-  article.append(root);
 };
 
 const scan = () => {

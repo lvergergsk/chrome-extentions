@@ -66,12 +66,17 @@
   white-space: nowrap;
 }
 
-.utils-x-download--overlay {
-  position: relative;
-  z-index: 2;
+.utils-x-download--in-cell {
   flex: none;
-  justify-content: flex-end;
-  margin-top: 4px;
+}
+
+.utils-x-download--overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 6;
+  flex: none;
+  margin: 0;
 }
 
 .utils-x-download--overlay .utils-x-download__btn {

@@ -265,7 +265,45 @@ const ACTION_ANCHORS = [
   '[data-testid="unretweet"]',
 ];
 
+const ACTION_MARKS = [
+  '[data-testid="bookmark"], [data-testid="removeBookmark"]',
+  '[data-testid="like"], [data-testid="unlike"]',
+  '[data-testid="reply"]',
+  '[data-testid="retweet"], [data-testid="unretweet"]',
+];
+
 const ACTION_LABEL = /share|bookmark|like|reply|repost|分享|书签|喜欢|转帖|转发|回复|共有|ブックマーク|いいね|リポスト|返信/i;
+
+const MEDIA_HOSTS = [
+  '[data-testid="tweetPhoto"]',
+  '[data-testid="videoPlayer"]',
+  '[data-testid="videoComponent"]',
+  '[data-testid="previewInterstitial"]',
+].join(", ");
+
+function isActionBar(node, article) {
+  if (!node || node === article || !belongsToArticle(node, article) || typeof node.querySelector !== "function") {
+    return false;
+  }
+  let hits = 0;
+  for (const selector of ACTION_MARKS) {
+    if (node.querySelector(selector)) {
+      hits += 1;
+    }
+  }
+  return hits >= 2;
+}
+
+function actionBarFrom(seed, article) {
+  let node = seed;
+  for (let depth = 0; depth < 12 && node && node !== article; depth += 1) {
+    if (isActionBar(node, article)) {
+      return node;
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
 
 export function findActionHost(article) {
   if (!article || typeof article.querySelectorAll !== "function") {
@@ -274,9 +312,9 @@ export function findActionHost(article) {
 
   for (const selector of ACTION_ANCHORS) {
     const button = firstOwnMatch(article, selector);
-    const group = button && typeof button.closest === "function" ? button.closest('[role="group"]') : null;
-    if (group && belongsToArticle(group, article)) {
-      return group;
+    const host = button ? actionBarFrom(button, article) : null;
+    if (host) {
+      return host;
     }
   }
 
@@ -303,4 +341,22 @@ export function findActionHost(article) {
     }
   }
   return null;
+}
+
+export function findMediaHost(article) {
+  return firstOwnMatch(article, MEDIA_HOSTS);
+}
+
+export function attachDownloadButton(host, root) {
+  if (!host || typeof host.append !== "function" || !root) {
+    return false;
+  }
+  const last = host.lastElementChild;
+  if (last && last !== root && typeof last.append === "function") {
+    root.classList?.add?.("utils-x-download--in-cell");
+    last.append(root);
+    return true;
+  }
+  host.append(root);
+  return true;
 }

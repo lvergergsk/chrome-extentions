@@ -220,28 +220,34 @@ test("tweetHasVisibleMedia detects unplayed video posters and videoComponent", (
 
 test("findActionHost prefers the bookmark group over video controls", () => {
   const article = {};
+  const bookmark = {};
+  const like = {};
   const videoGroup = {
+    querySelector: () => null,
     querySelectorAll: () => [{}, {}, {}, {}],
     closest: (selector) => (selector === "article" ? article : videoGroup),
   };
   const actionGroup = {
-    querySelectorAll: () => [{}, {}, {}, {}, {}],
-    closest: (selector) => (selector === "article" ? article : actionGroup),
-  };
-  const bookmark = {
-    closest: (selector) => {
-      if (selector === "article") {
-        return article;
+    querySelector: (selector) => {
+      if (selector.includes("bookmark")) {
+        return bookmark;
       }
-      if (selector === '[role="group"]') {
-        return actionGroup;
+      if (selector.includes("like")) {
+        return like;
       }
       return null;
     },
+    querySelectorAll: () => [{}, {}, {}, {}, {}],
+    closest: (selector) => (selector === "article" ? article : actionGroup),
   };
+  bookmark.closest = (selector) => (selector === "article" ? article : actionGroup);
+  bookmark.parentElement = actionGroup;
   article.querySelectorAll = (selector) => {
     if (selector.includes("bookmark")) {
       return [bookmark];
+    }
+    if (selector.includes("like")) {
+      return [like];
     }
     if (selector === '[role="group"]') {
       return [videoGroup, actionGroup];
