@@ -123,6 +123,43 @@ test("harvestTweetMedia reads syndication photos and graphql videos", () => {
   ]);
 });
 
+test("harvestTweetMedia reads unified_card videos in both binding shapes", () => {
+  const unifiedCard = JSON.stringify({
+    type: "video_website",
+    media_entities: {
+      "13_2056668009792708608": {
+        type: "video",
+        media_url_https: "https://pbs.twimg.com/amplify_video_thumb/2056668009792708608/img/x.jpg",
+        video_info: {
+          variants: [
+            { content_type: "video/mp4", bitrate: 256000, url: "https://video.twimg.com/amplify_video/205/low.mp4" },
+            { content_type: "video/mp4", bitrate: 832000, url: "https://video.twimg.com/amplify_video/205/high.mp4" },
+            { content_type: "application/x-mpegURL", url: "https://video.twimg.com/amplify_video/205/master.m3u8" },
+          ],
+        },
+      },
+    },
+  });
+
+  // The React fiber exposes binding_values as an object.
+  const fromFiber = harvestTweetMedia({
+    rest_id: "2085626243719000266",
+    card: { binding_values: { unified_card: { string_value: unifiedCard } } },
+  });
+  assert.deepEqual(fromFiber.get("2085626243719000266"), [
+    { kind: "video", url: "https://video.twimg.com/amplify_video/205/high.mp4" },
+  ]);
+
+  // GraphQL sends the same bindings as an array under card.legacy.
+  const fromGraphql = harvestTweetMedia({
+    rest_id: "42",
+    card: { legacy: { binding_values: [{ key: "unified_card", value: { string_value: unifiedCard } }] } },
+  });
+  assert.deepEqual(fromGraphql.get("42"), [
+    { kind: "video", url: "https://video.twimg.com/amplify_video/205/high.mp4" },
+  ]);
+});
+
 test("harvestTweetMedia survives React props whose getters throw", () => {
   // x.com's fiber props expose getters like `store` that throw when touched.
   const hostile = {};
