@@ -113,12 +113,46 @@
     return /^\d+$/.test(id) ? id : null;
   }
 
+  function bindingString(bindings, key) {
+    if (Array.isArray(bindings)) {
+      return bindings.find((binding) => binding?.key === key)?.value?.string_value ?? null;
+    }
+    if (bindings && typeof bindings === "object") {
+      return bindings[key]?.string_value ?? null;
+    }
+    return null;
+  }
+
+  // Card videos (unified_card, e.g. type "video_website") keep their variants in a
+  // JSON *string* under binding_values, not in extended_entities, so a plain walk
+  // never sees them. GraphQL sends binding_values as an array, the React fiber as
+  // an object; both appear.
+  function cardMediaList(node) {
+    const raw = bindingString(node.card?.binding_values ?? node.card?.legacy?.binding_values, "unified_card");
+    if (typeof raw !== "string") {
+      return null;
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    const entities = parsed?.media_entities;
+    if (!entities || typeof entities !== "object") {
+      return null;
+    }
+    const list = Object.values(entities);
+    return list.length > 0 ? list : null;
+  }
+
   function mediaListOf(node) {
     return (
       node.legacy?.extended_entities?.media ??
       node.extended_entities?.media ??
       node.mediaDetails ??
       node.legacy?.entities?.media ??
+      cardMediaList(node) ??
       null
     );
   }
