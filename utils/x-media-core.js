@@ -10,6 +10,19 @@ export function syndicationUrl(tweetId) {
   return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(id)}&lang=en&token=${syndicationToken(id)}`;
 }
 
+export function isMediaList(media) {
+  return (
+    Array.isArray(media) &&
+    media.every(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        typeof item.url === "string" &&
+        (item.kind === "photo" || item.kind === "video" || item.kind === "gif"),
+    )
+  );
+}
+
 export function isAllowedMediaUrl(urlString) {
   try {
     const url = new URL(urlString);
@@ -195,6 +208,13 @@ export function mergeMedia(groups) {
 
 function belongsToArticle(node, article) {
   return typeof node.closest === "function" ? node.closest("article") === article : false;
+}
+
+export function firstOwnMatch(article, selector) {
+  if (!article || typeof article.querySelectorAll !== "function" || typeof selector !== "string") {
+    return null;
+  }
+  return [...article.querySelectorAll(selector)].find((node) => belongsToArticle(node, article)) ?? null;
 }
 
 export function collectDomMedia(article) {

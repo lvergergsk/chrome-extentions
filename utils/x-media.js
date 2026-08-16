@@ -1,6 +1,8 @@
 import {
   collectDomMedia,
   extractTweetId,
+  firstOwnMatch,
+  isMediaList,
   tweetHasVisibleMedia,
 } from "./x-media-core.js";
 
@@ -38,7 +40,7 @@ const askPageMedia = (tweetId) =>
       }
       const data = event.data;
       if (data?.source === SOURCE && data.type === "reply" && data.requestId === requestId) {
-        finish(Array.isArray(data.media) ? data.media : []);
+        finish(isMediaList(data.media) ? data.media : []);
       }
     };
     window.addEventListener("message", onMessage);
@@ -166,7 +168,7 @@ const createButton = (article) => {
 };
 
 const injectArticle = (article) => {
-  const existing = article.querySelector(`[${ROOT_ATTR}]`);
+  const existing = firstOwnMatch(article, `[${ROOT_ATTR}]`);
   if (!tweetHasVisibleMedia(article)) {
     existing?.remove();
     return;
@@ -195,7 +197,7 @@ window.addEventListener("message", (event) => {
     return;
   }
   const data = event.data;
-  if (data?.source !== SOURCE || data.type !== "harvest" || !data.tweetId) {
+  if (data?.source !== SOURCE || data.type !== "harvest" || !data.tweetId || !isMediaList(data.media)) {
     return;
   }
   chrome.runtime.sendMessage({

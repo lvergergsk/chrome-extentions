@@ -2,6 +2,7 @@ import {
   downloadFilename,
   harvestTweetMedia,
   isAllowedMediaUrl,
+  isMediaList,
   mergeMedia,
   syndicationUrl,
 } from "./x-media-core.js";
@@ -10,7 +11,7 @@ const cache = new Map();
 
 const cacheMedia = (tweetId, media) => {
   const id = String(tweetId ?? "");
-  if (!id || !Array.isArray(media) || media.length === 0) {
+  if (!id || !isMediaList(media) || media.length === 0) {
     return;
   }
   cache.set(id, mergeMedia([cache.get(id) ?? [], media]));
@@ -35,21 +36,31 @@ const downloadTweet = async ({ tweetId, media }) => {
       syndicated = [];
     }
   }
-  const items = mergeMedia([cache.get(id) ?? [], syndicated, media ?? []]).filter((item) =>
+  const items = mergeMedia([cache.get(id) ?? [], syndicated, isMediaList(media) ? media : []]).filter((item) =>
     isAllowedMediaUrl(item.url),
   );
   if (items.length === 0) {
     return { ok: false, count: 0, error: "empty" };
   }
+  let count = 0;
+  let lastError = "";
   for (const [index, item] of items.entries()) {
-    await chrome.downloads.download({
-      url: item.url,
-      filename: `utils-x/${downloadFilename(id, index, item.url)}`,
-      conflictAction: "uniquify",
-      saveAs: false,
-    });
+    try {
+      await chrome.downloads.download({
+        url: item.url,
+        filename: `utils-x/${downloadFilename(id, index, item.url)}`,
+        conflictAction: "uniquify",
+        saveAs: false,
+      });
+      count += 1;
+    } catch (error) {
+      lastError = String(error?.message ?? error);
+    }
   }
-  return { ok: true, count: items.length };
+  if (count === 0) {
+    return { ok: false, count: 0, error: lastError || "empty" };
+  }
+  return { ok: true, count };
 };
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

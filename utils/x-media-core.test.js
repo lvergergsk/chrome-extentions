@@ -4,8 +4,10 @@ import {
   collectDomMedia,
   downloadFilename,
   extractTweetId,
+  firstOwnMatch,
   harvestTweetMedia,
   isAllowedMediaUrl,
+  isMediaList,
   mergeMedia,
   pickBestMp4,
   syndicationToken,
@@ -46,6 +48,12 @@ test("toOriginalImageUrl rejects profile pictures and non-https hosts", () => {
   );
   assert.equal(toOriginalImageUrl("http://pbs.twimg.com/media/CfwfpnJWwAEXwe3.jpg"), null);
   assert.equal(toOriginalImageUrl("https://evil.example/media/x.jpg"), null);
+});
+
+test("isMediaList accepts only photo/video/gif objects with a url", () => {
+  assert.equal(isMediaList([{ kind: "photo", url: "https://pbs.twimg.com/media/a.jpg" }]), true);
+  assert.equal(isMediaList([{ kind: "other", url: "https://pbs.twimg.com/media/a.jpg" }]), false);
+  assert.equal(isMediaList("nope"), false);
 });
 
 test("isAllowedMediaUrl only allows X media hosts over https", () => {
@@ -159,6 +167,16 @@ test("collectDomMedia keeps only this article's pbs media images", () => {
     { kind: "photo", url: "https://pbs.twimg.com/media/CfwfpnJWwAEXwe3?format=jpg&name=orig" },
     { kind: "video", url: "https://video.twimg.com/tweet_video/gif.mp4" },
   ]);
+});
+
+test("firstOwnMatch ignores nodes that belong to a nested article", () => {
+  const inner = {};
+  const outer = {
+    querySelectorAll() {
+      return [{ closest: () => inner }];
+    },
+  };
+  assert.equal(firstOwnMatch(outer, "[data-utils-x-download]"), null);
 });
 
 test("tweetHasVisibleMedia ignores quoted nested articles", () => {
