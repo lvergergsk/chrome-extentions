@@ -234,10 +234,73 @@ export function collectDomMedia(article) {
   return mergeMedia([photos, videos]);
 }
 
+const VISIBLE_MEDIA = [
+  '[data-testid="tweetPhoto"]',
+  '[data-testid="videoPlayer"]',
+  '[data-testid="videoComponent"]',
+  '[data-testid="previewInterstitial"]',
+  "video",
+  'img[src*="pbs.twimg.com/media/"]',
+  'img[src*="pbs.twimg.com/ext_tw_video_thumb"]',
+  'img[src*="pbs.twimg.com/amplify_video_thumb"]',
+  'img[src*="pbs.twimg.com/tweet_video_thumb"]',
+  'a[href*="/photo/"]',
+  'a[href*="/video/"]',
+].join(", ");
+
 export function tweetHasVisibleMedia(article) {
   if (!article || typeof article.querySelectorAll !== "function") {
     return false;
   }
-  return [...article.querySelectorAll('[data-testid="tweetPhoto"], [data-testid="videoPlayer"], video, img[src*="pbs.twimg.com/media/"]')]
-    .some((node) => belongsToArticle(node, article));
+  return [...article.querySelectorAll(VISIBLE_MEDIA)].some((node) => belongsToArticle(node, article));
+}
+
+const ACTION_ANCHORS = [
+  '[data-testid="bookmark"]',
+  '[data-testid="removeBookmark"]',
+  '[data-testid="like"]',
+  '[data-testid="unlike"]',
+  '[data-testid="reply"]',
+  '[data-testid="retweet"]',
+  '[data-testid="unretweet"]',
+];
+
+const ACTION_LABEL = /share|bookmark|like|reply|repost|分享|书签|喜欢|转帖|转发|回复|共有|ブックマーク|いいね|リポスト|返信/i;
+
+export function findActionHost(article) {
+  if (!article || typeof article.querySelectorAll !== "function") {
+    return null;
+  }
+
+  for (const selector of ACTION_ANCHORS) {
+    const button = firstOwnMatch(article, selector);
+    const group = button && typeof button.closest === "function" ? button.closest('[role="group"]') : null;
+    if (group && belongsToArticle(group, article)) {
+      return group;
+    }
+  }
+
+  const labeledGroup = [...article.querySelectorAll('[role="group"]')].find(
+    (node) => belongsToArticle(node, article) && node.querySelectorAll?.("button").length >= 3,
+  );
+  if (labeledGroup) {
+    return labeledGroup;
+  }
+
+  const actionButtons = [...article.querySelectorAll("button")].filter((button) => {
+    if (!belongsToArticle(button, article)) {
+      return false;
+    }
+    return ACTION_LABEL.test(`${button.getAttribute?.("aria-label") ?? ""} ${button.textContent ?? ""}`);
+  });
+  for (const button of actionButtons) {
+    let row = button.parentElement;
+    for (let depth = 0; depth < 6 && row && row !== article; depth += 1) {
+      if (row.querySelectorAll?.("button").length >= 3) {
+        return row;
+      }
+      row = row.parentElement;
+    }
+  }
+  return null;
 }

@@ -1,6 +1,7 @@
 import {
   collectDomMedia,
   extractTweetId,
+  findActionHost,
   firstOwnMatch,
   isMediaList,
   tweetHasVisibleMedia,
@@ -102,34 +103,6 @@ const svgIcon = () => {
     svg.append(path);
   }
   return svg;
-};
-
-const ACTION_LABEL = /share|bookmark|like|reply|repost|分享|书签|喜欢|转帖|转发|回复/i;
-
-const findActionHost = (article) => {
-  const labeledGroup = [...article.querySelectorAll('[role="group"]')].find(
-    (node) => node.closest("article") === article && node.querySelectorAll("button").length >= 3,
-  );
-  if (labeledGroup) {
-    return labeledGroup;
-  }
-
-  const actionButtons = [...article.querySelectorAll("button")].filter((button) => {
-    if (button.closest("article") !== article) {
-      return false;
-    }
-    return ACTION_LABEL.test(`${button.getAttribute("aria-label") ?? ""} ${button.textContent ?? ""}`);
-  });
-  for (const button of actionButtons) {
-    let row = button.parentElement;
-    for (let depth = 0; depth < 6 && row && row !== article; depth += 1) {
-      if (row.querySelectorAll("button").length >= 3) {
-        return row;
-      }
-      row = row.parentElement;
-    }
-  }
-  return null;
 };
 
 const createButton = (article) => {
