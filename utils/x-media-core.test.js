@@ -123,6 +123,36 @@ test("harvestTweetMedia reads syndication photos and graphql videos", () => {
   ]);
 });
 
+test("harvestTweetMedia survives React props whose getters throw", () => {
+  // x.com's fiber props expose getters like `store` that throw when touched.
+  const hostile = {};
+  Object.defineProperty(hostile, "store", {
+    enumerable: true,
+    get() {
+      throw new Error("store must be provided");
+    },
+  });
+  Object.defineProperty(hostile, "rest_id", {
+    enumerable: true,
+    get() {
+      throw new Error("store must be provided");
+    },
+  });
+  hostile.tweet = {
+    rest_id: "77",
+    legacy: {
+      extended_entities: {
+        media: [{ type: "photo", media_url_https: "https://pbs.twimg.com/media/AbCdEf.jpg" }],
+      },
+    },
+  };
+
+  const harvested = harvestTweetMedia(hostile);
+  assert.deepEqual(harvested.get("77"), [
+    { kind: "photo", url: "https://pbs.twimg.com/media/AbCdEf?format=jpg&name=orig" },
+  ]);
+});
+
 test("mergeMedia dedupes and drops video thumbnails when a video exists", () => {
   const merged = mergeMedia([
     [{ kind: "photo", url: "https://pbs.twimg.com/ext_tw_video_thumb/99/pu/img/thumb.jpg" }],
@@ -316,7 +346,7 @@ test("findActionHost walks past an inner bookmark group to the action bar", () =
   assert.equal(findActionHost(article), outerGroup);
 });
 
-test("attachDownloadButton puts the control in the last action cell", () => {
+test("attachDownloadButton adds a sibling cell instead of nesting inside share", () => {
   const appended = [];
   const shareCell = {
     append(node) {
@@ -331,7 +361,7 @@ test("attachDownloadButton puts the control in the last action cell", () => {
   };
   const root = { classList: { add() {} } };
   assert.equal(attachDownloadButton(host, root), true);
-  assert.deepEqual(appended, [["cell", root]]);
+  assert.deepEqual(appended, [["host", root]]);
 });
 
 test("findMediaHost returns this article's video player", () => {

@@ -58,7 +58,9 @@ const settings = {
   ...readSettings(path.join(profileDir, "Secure Preferences")),
 };
 const installed = findUnpackedInstall(settings, { id: UTILS_EXTENSION_ID, path: utilsDir });
-const reloadUrl = `chrome-extension://${UTILS_EXTENSION_ID}/reload.html`;
+// The timestamp keeps Chrome from re-focusing an earlier reload tab instead of
+// loading the page again, which would silently skip the reload.
+const reloadUrl = `chrome-extension://${UTILS_EXTENSION_ID}/reload.html?t=${Date.now()}`;
 const chromeArgs = (url) => [`--profile-directory=${profile.dir}`, url];
 
 if (mode === "open" || (mode === "auto" && !installed)) {
