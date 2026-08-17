@@ -26,6 +26,39 @@ iframe[src*="exoclick"],
 iframe[src*="juicyads"],
 iframe[src*="popcash"],
 
+.utils-sukebei-open {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+.utils-sukebei-open__button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.utils-sukebei-open__button:hover {
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+}
+
+.utils-sukebei-open__status {
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
 /* List-view row flags */
 table.torrent-list tr.utils-sukebei-flag,
 table.torrent-list tr.utils-sukebei-flag td,

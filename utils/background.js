@@ -1,4 +1,5 @@
 import "./x-media-core.js";
+import { filterUnvisited } from "./sukebei-open-unseen-bg.js";
 
 const {
   downloadFilename,
@@ -86,6 +87,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(sendResponse)
       .catch((error) => {
         sendResponse({ ok: false, count: 0, error: String(error?.message ?? error) });
+      });
+    return true;
+  }
+  if (message?.type === "utils.sukebei.filterUnvisited") {
+    const urls = Array.isArray(message.urls) ? message.urls.filter((url) => typeof url === "string") : [];
+    filterUnvisited(urls, (url) => chrome.history.getVisits({ url }))
+      .then((unseen) => sendResponse({ ok: true, urls: unseen }))
+      .catch((error) => {
+        sendResponse({ ok: false, urls: [], error: String(error?.message ?? error) });
+      });
+    return true;
+  }
+  if (message?.type === "utils.sukebei.openTab") {
+    const url = typeof message.url === "string" ? message.url : "";
+    if (!/^https?:\/\/([^/]*\.)?sukebei\.nyaa\.si\//i.test(url)) {
+      sendResponse({ ok: false, error: "bad-url" });
+      return;
+    }
+    chrome.tabs.create({ url, active: false })
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => {
+        sendResponse({ ok: false, error: String(error?.message ?? error) });
       });
     return true;
   }
