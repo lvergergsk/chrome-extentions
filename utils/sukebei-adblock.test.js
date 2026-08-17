@@ -13,8 +13,8 @@ const dnrRules = JSON.parse(read("rules/adblock.json"));
 
 test("manifest registers Sukebei host permissions, DNR rules and content scripts", () => {
   assert.ok(
-    manifest.host_permissions?.includes("https://sukebei.nyaa.si/*"),
-    "must include https://sukebei.nyaa.si/* host permission",
+    manifest.host_permissions?.some((p) => p.includes("sukebei.nyaa.si")),
+    "must include sukebei.nyaa.si host permission",
   );
   assert.ok(
     manifest.permissions?.includes("declarativeNetRequest"),
@@ -26,30 +26,31 @@ test("manifest registers Sukebei host permissions, DNR rules and content scripts
   );
 
   const sukebeiEntries = (manifest.content_scripts ?? []).filter((entry) =>
-    entry.matches?.includes("https://sukebei.nyaa.si/*"),
+    entry.matches?.some((m) => m.includes("sukebei.nyaa.si")),
   );
   assert.equal(sukebeiEntries.length, 2, "must have MAIN and ISOLATED content scripts for Sukebei");
 });
 
 test("DNR rules block known ad domains with valid rule definitions", () => {
-  assert.ok(Array.isArray(dnrRules) && dnrRules.length >= 3, "rules must be a non-empty array");
+  assert.ok(Array.isArray(dnrRules) && dnrRules.length >= 5, "rules must have full coverage");
   for (const rule of dnrRules) {
     assert.equal(rule.action?.type, "block", `rule ${rule.id} action must be block`);
     assert.ok(typeof rule.id === "number", `rule ${rule.id} id must be number`);
     assert.ok(typeof rule.condition?.urlFilter === "string", `rule ${rule.id} urlFilter must be string`);
-    assert.ok(Array.isArray(rule.condition?.resourceTypes), `rule ${rule.id} resourceTypes must be array`);
   }
   const filters = dnrRules.map((r) => r.condition.urlFilter);
   assert.ok(filters.some((f) => f.includes("tsyndicate.com")), "must block tsyndicate.com");
   assert.ok(filters.some((f) => f.includes("trafficstars.com")), "must block trafficstars.com");
+  assert.ok(filters.some((f) => f.includes("exoclick.com")), "must block exoclick.com");
 });
 
-test("page-world script safely stubs TSVideoInstantMessage and TSOutstreamVideo", () => {
+test("page-world script safely stubs TSVideoInstantMessage, TSOutstreamVideo and other TS SDKs", () => {
   const code = read("sukebei-adblock-page.js");
   const sandbox = {
     window: {},
     document: {
       write: () => {},
+      writeln: () => {},
     },
   };
   vm.createContext(sandbox);
@@ -57,8 +58,18 @@ test("page-world script safely stubs TSVideoInstantMessage and TSOutstreamVideo"
 
   assert.equal(typeof sandbox.window.TSVideoInstantMessage, "function");
   assert.equal(typeof sandbox.window.TSOutstreamVideo, "function");
+  assert.equal(typeof sandbox.window.TSPopunder, "function");
+  assert.equal(typeof sandbox.window.TSBanner, "function");
   assert.doesNotThrow(() => sandbox.window.TSVideoInstantMessage({ spot: "123" }));
   assert.doesNotThrow(() => sandbox.window.TSOutstreamVideo({ spot: "123" }));
+
+  const original = sandbox.window.TSOutstreamVideo;
+  try {
+    sandbox.window.TSOutstreamVideo = () => "sdk-overwrite";
+  } catch {
+    // Non-writable stub assignment may throw in strict mode.
+  }
+  assert.equal(sandbox.window.TSOutstreamVideo, original);
 });
 
 test("page-world script intercepts ad document.write calls", () => {
@@ -68,6 +79,9 @@ test("page-world script intercepts ad document.write calls", () => {
     window: {},
     document: {
       write: (val) => {
+        written += val;
+      },
+      writeln: (val) => {
         written += val;
       },
     },

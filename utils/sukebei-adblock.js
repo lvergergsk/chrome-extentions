@@ -6,6 +6,8 @@
     ".ts-video-instant-message",
     "[class*=\"ts-outstream\"]",
     "[class*=\"ts-video\"]",
+    "[class*=\"tsyndicate\"]",
+    "[class*=\"trafficstars\"]",
     "[id*=\"ts-\"]",
     "[data-ts-spot]",
     "[data-ts-container-id]",
@@ -13,6 +15,9 @@
     "[data-ts-wrapper-styles]",
     "iframe[src*=\"tsyndicate\"]",
     "iframe[src*=\"trafficstars\"]",
+    "iframe[src*=\"exoclick\"]",
+    "iframe[src*=\"juicyads\"]",
+    "iframe[src*=\"popcash\"]",
     "a[href*=\"theporndude.com\"]"
   ];
 
@@ -21,7 +26,7 @@
       return;
     }
 
-    // Clean up all standard ad elements
+    // Clean up all matching ad elements
     for (const selector of AD_SELECTORS) {
       const elements = root.querySelectorAll(selector);
       for (const el of elements) {
@@ -37,36 +42,31 @@
     }
   };
 
-  // Initial pass as early as possible
+  // Immediate cleanup pass
   removeAdElements(document);
 
-  // Observe dynamically added ad elements
+  // Dynamic observer for elements injected later
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
-        if (node.nodeType === 1) { // ELEMENT_NODE
+        if (node.nodeType === 1) {
           removeAdElements(node);
         }
       }
     }
   });
 
-  if (document.documentElement) {
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true
-    });
-  } else {
-    document.addEventListener("DOMContentLoaded", () => {
+  const startObserver = () => {
+    if (document.documentElement) {
       observer.observe(document.documentElement, {
         childList: true,
         subtree: true
       });
       removeAdElements(document);
-    });
-  }
+    }
+  };
 
-  // Ensure cleanup on DOMContentLoaded & load
+  startObserver();
   document.addEventListener("DOMContentLoaded", () => removeAdElements(document));
   window.addEventListener("load", () => removeAdElements(document));
 })();

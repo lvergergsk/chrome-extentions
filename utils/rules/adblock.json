@@ -6,16 +6,7 @@
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||tsyndicate.com^",
-      "resourceTypes": [
-        "script",
-        "image",
-        "xmlhttprequest",
-        "sub_frame",
-        "media",
-        "websocket",
-        "other"
-      ]
+      "urlFilter": "||tsyndicate.com^"
     }
   },
   {
@@ -25,16 +16,7 @@
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||tsyndicate.net^",
-      "resourceTypes": [
-        "script",
-        "image",
-        "xmlhttprequest",
-        "sub_frame",
-        "media",
-        "websocket",
-        "other"
-      ]
+      "urlFilter": "||tsyndicate.net^"
     }
   },
   {
@@ -44,15 +26,60 @@
       "type": "block"
     },
     "condition": {
-      "urlFilter": "||trafficstars.com^",
-      "resourceTypes": [
-        "script",
-        "image",
-        "xmlhttprequest",
-        "sub_frame",
-        "media",
-        "websocket",
-        "other"
+      "urlFilter": "||trafficstars.com^"
+    }
+  },
+  {
+    "id": 4,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||trafficstars.net^"
+    }
+  },
+  {
+    "id": 5,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||exoclick.com^"
+    }
+  },
+  {
+    "id": 6,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||juicyads.com^"
+    }
+  },
+  {
+    "id": 7,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||popcash.net^"
+    }
+  },
+  {
+    "id": 8,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||theporndude.com^",
+      "initiatorDomains": [
+        "sukebei.nyaa.si",
+        "nyaa.si"
       ]
     }
   }
