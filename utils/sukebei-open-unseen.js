@@ -53,6 +53,7 @@
   }
 
   let runId = 0;
+  let startedAt = 0;
 
   const ensureBar = () => {
     const table = document.querySelector("table.torrent-list");
@@ -77,6 +78,9 @@
 
     button.addEventListener("click", async () => {
       if (button.dataset.busy === "1") {
+        if (Date.now() - startedAt < 500) {
+          return;
+        }
         runId += 1;
         button.dataset.busy = "0";
         button.textContent = "打开未看过的条目";
@@ -84,6 +88,7 @@
         return;
       }
       const current = ++runId;
+      startedAt = Date.now();
       button.dataset.busy = "1";
       button.textContent = "停止";
       status.textContent = "正在核对浏览记录…";
@@ -93,7 +98,9 @@
         const filtered = await ask({ type: "utils.sukebei.filterUnvisited", urls });
         const unseen = filtered?.urls ?? [];
         if (unseen.length === 0) {
-          status.textContent = "没有可打开的未看条目";
+          if (current === runId) {
+            status.textContent = "没有可打开的未看条目";
+          }
           return;
         }
         for (const [index, url] of unseen.entries()) {
@@ -103,7 +110,9 @@
           status.textContent = `打开 ${index + 1}/${unseen.length}`;
           const opened = await ask({ type: "utils.sukebei.openTab", url });
           if (!opened?.ok) {
-            status.textContent = opened?.error || "打开失败";
+            if (current === runId) {
+              status.textContent = opened?.error || "打开失败";
+            }
             return;
           }
           if (index < unseen.length - 1) {

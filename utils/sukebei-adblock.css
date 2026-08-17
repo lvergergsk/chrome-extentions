@@ -25,6 +25,19 @@ iframe[src*="trafficstars"],
 iframe[src*="exoclick"],
 iframe[src*="juicyads"],
 iframe[src*="popcash"],
+a[href*="theporndude.com"],
+.navbar-nav > li:has(> a[href*="theporndude.com"]) {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
 
 .utils-sukebei-open {
   display: flex;
@@ -64,19 +77,4 @@ table.torrent-list tr.utils-sukebei-flag,
 table.torrent-list tr.utils-sukebei-flag td,
 table.torrent-list tr.utils-sukebei-flag a {
   color: #ff4d4f !important;
-}
-
-/* Navbar sponsor links */
-a[href*="theporndude.com"],
-.navbar-nav > li:has(> a[href*="theporndude.com"]) {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  min-height: 0 !important;
-  max-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  pointer-events: none !important;
-  opacity: 0 !important;
 }
