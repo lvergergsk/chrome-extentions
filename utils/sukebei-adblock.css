@@ -26,10 +26,11 @@ iframe[src*="exoclick"],
 iframe[src*="juicyads"],
 iframe[src*="popcash"],
 
-/* List-view title flags */
-.utils-sukebei-flag {
+/* List-view row flags */
+table.torrent-list tr.utils-sukebei-flag,
+table.torrent-list tr.utils-sukebei-flag td,
+table.torrent-list tr.utils-sukebei-flag a {
   color: #ff4d4f !important;
-  font-weight: 700;
 }
 
 /* Navbar sponsor links */
