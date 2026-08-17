@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Utils",
   "description": "Personal utilities, including X image/video download and Sukebei ad blocking.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA49zjaYcSVaR0yJDty20MrTFngBy8dNsWnHBZ6p/eORVc+DikHsvV92k3f73Jdg6wNo2pto+W9wjtGoGJ/pDaFgE0Afqp0+W1qsxFOiEpNcmFgbToQk0or85vmHTLoapQiT/caxh7hK8zPXYPNRJ77sddMc54+vuASxWlra8oVKVsRhhqQJ351e5lvMoTmBHYW2Bla7OuFgfAUXSdsOB2OSLlZ6iPhGBdRPgdw/T9BzcYGguqx+fYHJWjS7oYN5Oq0KUgtA7oLVGyyz2/Aah4+9QegF1h/UIubQscNX9ELZjW8o+xxxuIKByIbXWl1W2IvGV1tCPCX4W+bD+ldQ2+HQIDAQAB",
   "action": {
     "default_title": "Utils",
@@ -27,8 +27,10 @@
     "https://pbs.twimg.com/*",
     "https://video.twimg.com/*",
     "https://cdn.syndication.twimg.com/*",
-    "https://sukebei.nyaa.si/*",
-    "http://sukebei.nyaa.si/*"
+    "*://sukebei.nyaa.si/*",
+    "*://*.sukebei.nyaa.si/*",
+    "*://nyaa.si/*",
+    "*://*.nyaa.si/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -64,8 +66,10 @@
     },
     {
       "matches": [
-        "https://sukebei.nyaa.si/*",
-        "http://sukebei.nyaa.si/*"
+        "*://sukebei.nyaa.si/*",
+        "*://*.sukebei.nyaa.si/*",
+        "*://nyaa.si/*",
+        "*://*.nyaa.si/*"
       ],
       "js": [
         "sukebei-adblock-page.js"
@@ -75,8 +79,10 @@
     },
     {
       "matches": [
-        "https://sukebei.nyaa.si/*",
-        "http://sukebei.nyaa.si/*"
+        "*://sukebei.nyaa.si/*",
+        "*://*.sukebei.nyaa.si/*",
+        "*://nyaa.si/*",
+        "*://*.nyaa.si/*"
       ],
       "js": [
         "sukebei-adblock.js"

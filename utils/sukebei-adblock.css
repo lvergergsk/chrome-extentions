@@ -1,27 +1,35 @@
 /* Sukebei (Nyaa) Ad Blocker Styles */
 
-/* Known ad container IDs */
+/* Known ad container IDs and UUID banners */
 #e71bf691-4eb4-453f-8f11-6f40280c18f6,
 #ec01fd54-016b-41b4-bec9-b9b93f9b3b77,
+div[id="e71bf691-4eb4-453f-8f11-6f40280c18f6"],
+div[id="ec01fd54-016b-41b4-bec9-b9b93f9b3b77"],
 
 /* Ad SDK classes and attributes */
 .ts-outstream-video,
 .ts-video-instant-message,
 [class*="ts-outstream"],
 [class*="ts-video"],
+[class*="tsyndicate"],
+[class*="trafficstars"],
 [id*="ts-"],
 [data-ts-spot],
 [data-ts-container-id],
 [data-ts-native-settings],
 [data-ts-wrapper-styles],
 
-/* Ad iframes and scripts */
+/* Ad iframes and media */
 iframe[src*="tsyndicate"],
 iframe[src*="trafficstars"],
+iframe[src*="exoclick"],
+iframe[src*="juicyads"],
+iframe[src*="popcash"],
 
 /* Navbar sponsor links */
 a[href*="theporndude.com"],
-.navbar-nav > li:has(> a[href*="theporndude.com"]) {
+.navbar-nav > li:has(> a[href*="theporndude.com"]),
+.navbar-nav > li:has(> a[href*="example.com"]) {
   display: none !important;
   visibility: hidden !important;
   height: 0 !important;
