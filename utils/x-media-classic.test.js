@@ -11,8 +11,12 @@ const read = (name) => readFileSync(path.join(utilsDir, name), "utf8");
 
 const manifest = JSON.parse(read("manifest.json"));
 
+const allContentScripts = [
+  ...new Set((manifest.content_scripts ?? []).flatMap((entry) => entry.js ?? [])),
+];
+
 test("content scripts stay classic so Chrome 151 can parse them", () => {
-  for (const name of ["x-media.js", "x-media-page.js", "x-media-core.js"]) {
+  for (const name of allContentScripts) {
     const text = read(name);
     assert.equal(/^\s*import\s/m.test(text), false, `${name} must not use import`);
     assert.equal(/^\s*export\s/m.test(text), false, `${name} must not use export`);
@@ -35,7 +39,7 @@ test("classic files in one content_scripts entry never redeclare a shared global
 });
 
 test("content scripts keep the page global scope clean", () => {
-  for (const name of ["x-media.js", "x-media-page.js", "x-media-core.js"]) {
+  for (const name of allContentScripts) {
     const text = read(name);
     const topLevelDeclaration = /^(?:const|let|var|function|class)\s/m;
     assert.equal(

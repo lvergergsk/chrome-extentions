@@ -5,7 +5,7 @@
   "description": "Personal Chrome extensions.",
   "type": "module",
   "scripts": {
-    "test": "node --test utils/x-media-core.test.js utils/x-media-classic.test.js scripts/extension-id.test.js && node .github/scripts/validate-extensions.mjs",
+    "test": "node --test utils/x-media-core.test.js utils/x-media-classic.test.js utils/sukebei-adblock.test.js scripts/extension-id.test.js && node .github/scripts/validate-extensions.mjs",
     "load": "node scripts/load-utils.mjs",
     "reload": "node scripts/load-utils.mjs --reload"
   },

@@ -4,7 +4,9 @@
 
 ## Extensions
 
-- `utils` - 个人工具箱。当前包含 X/Twitter 帖子图片和视频下载。
+- `utils` - 个人工具箱。包含：
+  - X/Twitter 帖子图片和视频一键下载（自动点赞）。
+  - Sukebei (https://sukebei.nyaa.si/) 广告拦截（网络层拦截 + 页面桩注入 + 广告容器自动清理）。
 
 ## 本地加载
 
