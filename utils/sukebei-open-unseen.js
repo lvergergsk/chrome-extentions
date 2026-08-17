@@ -1,5 +1,6 @@
 (() => {
   const FLAG_CLASS = "utils-sukebei-flag";
+  const SEEN_CLASS = "utils-sukebei-seen";
   const BAR_ID = "utils-sukebei-open-unseen";
   const INTERVAL_MS = 3000;
 
@@ -24,6 +25,36 @@
     return urls;
   };
 
+  const collectAllViewUrls = (root, origin) => {
+    const table = root.querySelector("table.torrent-list");
+    if (!table) {
+      return [];
+    }
+    const urls = [];
+    for (const title of table.querySelectorAll('td[colspan] > a[href^="/view/"]')) {
+      urls.push(new URL(title.getAttribute("href"), origin).href);
+    }
+    return urls;
+  };
+
+  const markSeenUrls = (root, origin, urls) => {
+    const wanted = new Set(urls);
+    const table = root.querySelector("table.torrent-list");
+    if (!table) {
+      return 0;
+    }
+    let count = 0;
+    for (const title of table.querySelectorAll('td[colspan] > a[href^="/view/"]')) {
+      const href = new URL(title.getAttribute("href"), origin).href;
+      if (!wanted.has(href)) {
+        continue;
+      }
+      title.classList.add(SEEN_CLASS);
+      count += 1;
+    }
+    return count;
+  };
+
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const ask = (message) =>
@@ -40,6 +71,9 @@
 
   globalThis.UtilsSukebeiOpenUnseen = {
     collectUnflaggedViewUrls,
+    collectAllViewUrls,
+    markSeenUrls,
+    SEEN_CLASS,
     INTERVAL_MS,
   };
 
@@ -54,6 +88,34 @@
 
   let runId = 0;
   let startedAt = 0;
+  let painting = false;
+
+  const paintVisitedFromHistory = async () => {
+    if (painting) {
+      return;
+    }
+    painting = true;
+    try {
+      const urls = collectAllViewUrls(document, location.origin);
+      if (urls.length === 0) {
+        return;
+      }
+      const filtered = await ask({ type: "utils.sukebei.filterUnvisited", urls });
+      if (!filtered?.ok || !Array.isArray(filtered.urls)) {
+        return;
+      }
+      const unseen = new Set(filtered.urls);
+      markSeenUrls(
+        document,
+        location.origin,
+        urls.filter((url) => !unseen.has(url)),
+      );
+    } catch {
+      // History may be unavailable until the user grants the permission.
+    } finally {
+      painting = false;
+    }
+  };
 
   const ensureBar = () => {
     const table = document.querySelector("table.torrent-list");
@@ -96,7 +158,13 @@
         listApi.highlightList?.(document, location);
         const urls = collectUnflaggedViewUrls(document, location.origin);
         const filtered = await ask({ type: "utils.sukebei.filterUnvisited", urls });
-        const unseen = filtered?.urls ?? [];
+        if (!filtered?.ok) {
+          if (current === runId) {
+            status.textContent = filtered?.error || "无法读取浏览记录";
+          }
+          return;
+        }
+        const unseen = filtered.urls ?? [];
         if (unseen.length === 0) {
           if (current === runId) {
             status.textContent = "没有可打开的未看条目";
@@ -115,6 +183,7 @@
             }
             return;
           }
+          markSeenUrls(document, location.origin, [url]);
           if (index < unseen.length - 1) {
             await sleep(INTERVAL_MS);
           }
@@ -145,6 +214,7 @@
     setTimeout(() => {
       queued = false;
       ensureBar();
+      paintVisitedFromHistory();
     }, 50);
   };
 
