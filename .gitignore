@@ -6,6 +6,9 @@ Thumbs.db
 *.pem
 *.zip
 
+# Chrome writes this when loading unpacked DNR rules
+utils/_metadata/
+
 # Dependency/build folders, if an extension later gets a build step
 node_modules/
 dist/
