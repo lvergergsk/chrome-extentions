@@ -75,4 +75,5 @@ test("CSS marks opened titles gray", () => {
   const css = read("sukebei-adblock.css");
   assert.ok(css.includes(".utils-sukebei-seen"));
   assert.match(css, /\.utils-sukebei-seen[\s\S]*#888/);
+  assert.match(css, /tr:not\(\.utils-sukebei-flag\).*utils-sukebei-seen/);
 });

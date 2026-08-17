@@ -101,7 +101,10 @@
         return;
       }
       const filtered = await ask({ type: "utils.sukebei.filterUnvisited", urls });
-      const unseen = new Set(filtered?.urls ?? []);
+      if (!filtered?.ok || !Array.isArray(filtered.urls)) {
+        return;
+      }
+      const unseen = new Set(filtered.urls);
       markSeenUrls(
         document,
         location.origin,
@@ -155,7 +158,13 @@
         listApi.highlightList?.(document, location);
         const urls = collectUnflaggedViewUrls(document, location.origin);
         const filtered = await ask({ type: "utils.sukebei.filterUnvisited", urls });
-        const unseen = filtered?.urls ?? [];
+        if (!filtered?.ok) {
+          if (current === runId) {
+            status.textContent = filtered?.error || "无法读取浏览记录";
+          }
+          return;
+        }
+        const unseen = filtered.urls ?? [];
         if (unseen.length === 0) {
           if (current === runId) {
             status.textContent = "没有可打开的未看条目";
