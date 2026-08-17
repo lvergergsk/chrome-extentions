@@ -27,6 +27,12 @@ iframe[src*="juicyads"],
 iframe[src*="popcash"],
 
 /* Navbar sponsor links */
+/* List-view title flags */
+.utils-sukebei-flag {
+  color: #ff4d4f !important;
+  font-weight: 700;
+}
+
 a[href*="theporndude.com"],
 .navbar-nav > li:has(> a[href*="theporndude.com"]) {
   display: none !important;
