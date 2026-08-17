@@ -106,6 +106,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     chrome.tabs.create({ url, active: false })
+      .then(() => chrome.history.addUrl({ url }))
       .then(() => sendResponse({ ok: true }))
       .catch((error) => {
         sendResponse({ ok: false, error: String(error?.message ?? error) });

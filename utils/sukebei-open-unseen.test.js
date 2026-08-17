@@ -50,3 +50,29 @@ test("collectUnflaggedViewUrls skips red rows and keeps view links", () => {
     ["https://sukebei.nyaa.si/view/ok"],
   );
 });
+
+test("markSeenUrls paints matching title links gray", () => {
+  const { markSeenUrls, SEEN_CLASS } = loadApi();
+  const added = [];
+  const title = {
+    getAttribute: () => "/view/ok",
+    classList: { add: (name) => added.push(name) },
+  };
+  const table = {
+    querySelectorAll: () => [title],
+  };
+  const root = {
+    querySelector: (sel) => (sel === "table.torrent-list" ? table : null),
+  };
+  assert.equal(
+    markSeenUrls(root, "https://sukebei.nyaa.si", ["https://sukebei.nyaa.si/view/ok"]),
+    1,
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(added)), [SEEN_CLASS]);
+});
+
+test("CSS marks opened titles gray", () => {
+  const css = read("sukebei-adblock.css");
+  assert.ok(css.includes(".utils-sukebei-seen"));
+  assert.match(css, /\.utils-sukebei-seen[\s\S]*#888/);
+});

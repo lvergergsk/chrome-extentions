@@ -72,6 +72,11 @@ a[href*="theporndude.com"],
   font-size: 13px;
 }
 
+table.torrent-list td[colspan] > a[href^="/view/"]:visited,
+table.torrent-list a.utils-sukebei-seen {
+  color: #888 !important;
+}
+
 /* List-view row flags */
 table.torrent-list tr.utils-sukebei-flag,
 table.torrent-list tr.utils-sukebei-flag td,
