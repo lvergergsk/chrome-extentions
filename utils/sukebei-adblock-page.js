@@ -3,6 +3,26 @@
   // so inline scripts on Sukebei do not throw ReferenceError when the external
   // ad SDKs are blocked.
   const noop = () => {};
+  const lockStub = (name) => {
+    try {
+      Object.defineProperty(window, name, {
+        configurable: false,
+        enumerable: false,
+        writable: false,
+        value: noop,
+      });
+      return;
+    } catch {
+      // Fall through if the name is already a non-configurable binding.
+    }
+    try {
+      if (typeof window[name] === "undefined") {
+        window[name] = noop;
+      }
+    } catch {
+      // Ignore context or sandbox restrictions
+    }
+  };
   try {
     const stubs = [
       "TSVideoInstantMessage",
@@ -14,9 +34,7 @@
       "ts_ad"
     ];
     for (const name of stubs) {
-      if (typeof window[name] === "undefined") {
-        window[name] = noop;
-      }
+      lockStub(name);
     }
   } catch {
     // Ignore context or sandbox restrictions

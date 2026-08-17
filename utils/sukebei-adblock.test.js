@@ -62,6 +62,14 @@ test("page-world script safely stubs TSVideoInstantMessage, TSOutstreamVideo and
   assert.equal(typeof sandbox.window.TSBanner, "function");
   assert.doesNotThrow(() => sandbox.window.TSVideoInstantMessage({ spot: "123" }));
   assert.doesNotThrow(() => sandbox.window.TSOutstreamVideo({ spot: "123" }));
+
+  const original = sandbox.window.TSOutstreamVideo;
+  try {
+    sandbox.window.TSOutstreamVideo = () => "sdk-overwrite";
+  } catch {
+    // Non-writable stub assignment may throw in strict mode.
+  }
+  assert.equal(sandbox.window.TSOutstreamVideo, original);
 });
 
 test("page-world script intercepts ad document.write calls", () => {

@@ -28,8 +28,7 @@ iframe[src*="popcash"],
 
 /* Navbar sponsor links */
 a[href*="theporndude.com"],
-.navbar-nav > li:has(> a[href*="theporndude.com"]),
-.navbar-nav > li:has(> a[href*="example.com"]) {
+.navbar-nav > li:has(> a[href*="theporndude.com"]) {
   display: none !important;
   visibility: hidden !important;
   height: 0 !important;
