@@ -15,6 +15,8 @@
     'script[src*="armsbroodelusive"]',
     'img[src*="/b_pics/"]',
     'img[src*="/istrp/"]',
+    "#ageOverlay",
+    "#ageWidget",
   ];
 
   const removeAdElements = (root = document) => {

@@ -104,6 +104,7 @@ test("isolated script removes banner row and affiliate links", () => {
     { tagName: "DIV", selectors: [".bnrs"], removed: false, remove() { this.removed = true; } },
     { tagName: "A", selectors: ['a[href*="aagm.link"]'], removed: false, remove() { this.removed = true; } },
     { tagName: "A", selectors: ['a[href*="vexlira.com"]'], removed: false, remove() { this.removed = true; } },
+    { tagName: "DIV", selectors: ["#ageOverlay"], removed: false, remove() { this.removed = true; } },
   ];
   const document = {
     getElementById: () => null,
@@ -133,5 +134,6 @@ test("orangepix-adblock.css hides banner row and affiliate ads", () => {
   assert.ok(css.includes(".bnr"), "must hide .bnr");
   assert.ok(css.includes("aagm.link"), "must hide aagm affiliate links");
   assert.ok(css.includes("vexlira.com"), "must hide vexlira banners");
+  assert.ok(css.includes("#ageOverlay"), "must hide the age overlay");
   assert.ok(css.includes("display: none !important"), "must enforce display: none !important");
 });
