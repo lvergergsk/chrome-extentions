@@ -1,0 +1,27 @@
+/* orangepix.is banner row and affiliate ads */
+
+.bnrs,
+.bnr,
+a[href*="aagm.link"],
+a[href*="bbwafx.com"],
+a[href*="vexlira.com"],
+iframe[src*="miserly-wrap"],
+iframe[src*="armsbroodelusive"],
+iframe[src*="new-split"],
+iframe[src*="aagm.link"],
+iframe[src*="vexlira"],
+img[src*="/b_pics/"],
+img[src*="/istrp/"],
+#ageOverlay,
+#ageWidget {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}

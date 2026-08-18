@@ -1,0 +1,28 @@
+/* ouo.io / ouo.press ad overlays and banners */
+
+iframe[title="offer"],
+iframe[src*="onclck"],
+iframe[src*="pubadx"],
+iframe[src*="popcash"],
+iframe[src*="adspector"],
+iframe[src*="cuplikenominee"],
+iframe[src*="excavatenearbywand"],
+[data-banner-id],
+.gfpl-wrapper,
+[class*="bg-ssp-"],
+[class*="bg-container-"],
+[id*="bg-ssp-"],
+.__bai-container,
+.__inst-container,
+.IOarzRhPlPOverlay {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
