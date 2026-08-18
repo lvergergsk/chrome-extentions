@@ -42,6 +42,14 @@
     }
 
     for (const selector of AD_SELECTORS) {
+      try {
+        if (typeof root.matches === "function" && root.matches(selector)) {
+          root.remove();
+          return;
+        }
+      } catch {
+        // Invalid selector against this node
+      }
       const elements = root.querySelectorAll(selector);
       for (const el of elements) {
         const parent = el.parentElement;
@@ -117,19 +125,5 @@
   });
 
   const poll = setInterval(clickWhenReady, 400);
-  setTimeout(() => {
-    try {
-      const token = document.querySelector("[name=cf-turnstile-response]");
-      if (token && !token.value && isGatePage(pagePath())) {
-        const btn = document.getElementById("btn-main");
-        if (btn && !btn.dataset.utilsOuoClicked) {
-          btn.dataset.utilsOuoClicked = "1";
-          btn.click();
-        }
-      }
-    } catch {
-      // Ignore if the page navigated away
-    }
-    clearInterval(poll);
-  }, 8000);
+  setTimeout(() => clearInterval(poll), 30000);
 })();

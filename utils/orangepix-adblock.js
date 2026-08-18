@@ -25,6 +25,14 @@
     }
 
     for (const selector of AD_SELECTORS) {
+      try {
+        if (typeof root.matches === "function" && root.matches(selector)) {
+          root.remove();
+          return;
+        }
+      } catch {
+        // Invalid selector against this node
+      }
       const elements = root.querySelectorAll(selector);
       for (const el of elements) {
         el.remove();

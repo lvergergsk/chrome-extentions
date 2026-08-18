@@ -152,6 +152,9 @@ const runIsolatedScript = ({ pathname = "/8VW7Xi", ads = [], token = "tok", href
       location: { pathname, href, hostname: "ouo.io" },
     },
     MutationObserver: class {
+      constructor(cb) {
+        sandbox.observerCb = cb;
+      }
       observe() {}
     },
     setTimeout: (fn) => {
@@ -169,7 +172,7 @@ const runIsolatedScript = ({ pathname = "/8VW7Xi", ads = [], token = "tok", href
   sandbox.window.document = document;
   vm.createContext(sandbox);
   vm.runInContext(read("ouo-adblock.js"), sandbox);
-  return { btn, nodes, removed, flush: () => timers.splice(0).forEach((fn) => fn()) };
+  return { btn, nodes, removed, observerCb: sandbox.observerCb, flush: () => timers.splice(0).forEach((fn) => fn()) };
 };
 
 test("isolated script removes offer overlay and ad banners", () => {
@@ -191,6 +194,29 @@ test("isolated script does not click on the marketing homepage", () => {
   const { btn, flush } = runIsolatedScript({ pathname: "/", href: "https://ouo.io/" });
   flush();
   assert.equal(btn.clicked, 0);
+});
+
+test("isolated script waits for Turnstile instead of force-clicking an empty token", () => {
+  const { btn, flush } = runIsolatedScript({ token: "" });
+  flush();
+  assert.equal(btn.clicked, 0);
+});
+
+test("isolated script removes a matching node injected as an addedNode", () => {
+  const { observerCb } = runIsolatedScript();
+  assert.equal(typeof observerCb, "function");
+  const added = {
+    nodeType: 1,
+    tagName: "IFRAME",
+    removed: false,
+    matches: (sel) => sel === 'iframe[title="offer"]',
+    querySelectorAll: () => [],
+    remove() {
+      this.removed = true;
+    },
+  };
+  observerCb([{ addedNodes: [added] }]);
+  assert.equal(added.removed, true);
 });
 
 test("ouo-adblock.css hides offer overlays and pubadx banners", () => {

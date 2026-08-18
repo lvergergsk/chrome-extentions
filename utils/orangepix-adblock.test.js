@@ -117,6 +117,9 @@ test("isolated script removes banner row and affiliate links", () => {
     document,
     window: { addEventListener() {}, location: { hostname: "orangepix.is" } },
     MutationObserver: class {
+      constructor(cb) {
+        sandbox.observerCb = cb;
+      }
       observe() {}
     },
   };
@@ -126,6 +129,19 @@ test("isolated script removes banner row and affiliate links", () => {
   vm.runInContext(read("orangepix-adblock.js"), sandbox);
   assert.equal(nodes.every((node) => node.removed), true);
   assert.equal(document.documentElement.dataset.utilsOrangepix, "1");
+
+  const added = {
+    nodeType: 1,
+    tagName: "DIV",
+    removed: false,
+    matches: (sel) => sel === "#ageOverlay",
+    querySelectorAll: () => [],
+    remove() {
+      this.removed = true;
+    },
+  };
+  sandbox.observerCb([{ addedNodes: [added] }]);
+  assert.equal(added.removed, true);
 });
 
 test("orangepix-adblock.css hides banner row and affiliate ads", () => {
