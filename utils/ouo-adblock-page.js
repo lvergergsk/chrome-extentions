@@ -3,9 +3,12 @@
   const AD_WRITE_RE =
     /popcash|onclck|pubadx|cuplikenominee|excavatenearbywand|adspector|coosync|drimquop|metricswpsh/i;
 
-  const isOuoUrl = (url) =>
-    typeof url === "string" &&
-    (OUO_HOST.test(url) || /^(?:https?:)?\/\/(?:[^/]*\.)?ouo\.(?:io|press)(?:[/:?#]|$)/i.test(url));
+  const hostFromUrl = (url) => {
+    const match = String(url).match(/^(?:https?:)?\/\/([^/?#]+)/i);
+    return match ? match[1] : "";
+  };
+
+  const isOuoUrl = (url) => typeof url === "string" && OUO_HOST.test(hostFromUrl(url));
 
   try {
     const originalOpen = window.open.bind(window);

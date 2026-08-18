@@ -56,6 +56,8 @@
         if (
           el.tagName === "IFRAME" &&
           parent &&
+          parent !== document.body &&
+          parent !== document.documentElement &&
           typeof parent.querySelector === "function" &&
           !parent.querySelector("#form-captcha, #btn-main, .skip-container")
         ) {
@@ -76,7 +78,7 @@
       return;
     }
     const token = document.querySelector("[name=cf-turnstile-response]");
-    if (token && !token.value) {
+    if (!token || !token.value) {
       return;
     }
     btn.dataset.utilsOuoClicked = "1";

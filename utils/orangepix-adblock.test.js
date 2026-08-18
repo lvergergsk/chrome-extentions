@@ -84,6 +84,7 @@ test("page-world script blocks ad popunders but keeps orangepix opens", () => {
   assert.equal(sandbox.window.open("https://new-split.com/pop"), null);
   assert.equal(sandbox.window.open("https://t.aagm.link/offer"), null);
   assert.equal(sandbox.window.open("https://mks98.com/link2"), null);
+  assert.equal(sandbox.window.open("https://ads.example/path.orangepix.is"), null);
   assert.equal(opened.length, 0);
 
   const kept = sandbox.window.open("https://orangepix.is/image/6la1c");

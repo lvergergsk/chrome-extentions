@@ -92,6 +92,7 @@ test("page-world script blocks ad popunders but keeps same-site opens", () => {
   assert.equal(sandbox.window.open("https://cdn.popcash.net/pop"), null);
   assert.equal(sandbox.window.open("https://bid.onclckbn.net/go"), null);
   assert.equal(sandbox.window.open("https://platform.pubadx.one/ad"), null);
+  assert.equal(sandbox.window.open("https://ads.example/path.ouo.io"), null);
   assert.equal(opened.length, 0);
 
   const kept = sandbox.window.open("https://ouo.io/go/8VW7Xi");
@@ -137,7 +138,7 @@ const runIsolatedScript = ({ pathname = "/8VW7Xi", ads = [], token = "tok", href
     getElementById: (id) => (id === "btn-main" ? btn : null),
     querySelector: (sel) => {
       if (String(sel).includes("cf-turnstile-response")) {
-        return tokenEl;
+        return token == null ? null : tokenEl;
       }
       return null;
     },
@@ -198,6 +199,12 @@ test("isolated script does not click on the marketing homepage", () => {
 
 test("isolated script waits for Turnstile instead of force-clicking an empty token", () => {
   const { btn, flush } = runIsolatedScript({ token: "" });
+  flush();
+  assert.equal(btn.clicked, 0);
+});
+
+test("isolated script waits until the Turnstile field exists", () => {
+  const { btn, flush } = runIsolatedScript({ token: null });
   flush();
   assert.equal(btn.clicked, 0);
 });

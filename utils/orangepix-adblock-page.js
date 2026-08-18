@@ -3,9 +3,12 @@
   const AD_WRITE_RE =
     /aagm\.link|bbwafx\.com|vexlira\.com|miserly-wrap|armsbroodelusive|new-split\.com|mks98\.com|htsrc\.js/i;
 
-  const isSiteUrl = (url) =>
-    typeof url === "string" &&
-    (SITE_HOST.test(url) || /^(?:https?:)?\/\/(?:[^/]*\.)?orangepix\.is(?:[/:?#]|$)/i.test(url));
+  const hostFromUrl = (url) => {
+    const match = String(url).match(/^(?:https?:)?\/\/([^/?#]+)/i);
+    return match ? match[1] : "";
+  };
+
+  const isSiteUrl = (url) => typeof url === "string" && SITE_HOST.test(hostFromUrl(url));
 
   try {
     const originalOpen = window.open.bind(window);
