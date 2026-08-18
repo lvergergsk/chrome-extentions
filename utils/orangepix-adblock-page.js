@@ -1,0 +1,47 @@
+(() => {
+  const SITE_HOST = /(^|\.)orangepix\.is$/i;
+  const AD_WRITE_RE =
+    /aagm\.link|bbwafx\.com|vexlira\.com|miserly-wrap|armsbroodelusive|new-split\.com|mks98\.com|htsrc\.js/i;
+
+  const isSiteUrl = (url) =>
+    typeof url === "string" &&
+    (SITE_HOST.test(url) || /^(?:https?:)?\/\/(?:[^/]*\.)?orangepix\.is(?:[/:?#]|$)/i.test(url));
+
+  try {
+    const originalOpen = window.open.bind(window);
+    window.open = function (url, ...rest) {
+      if (typeof url === "string" && isSiteUrl(url)) {
+        return originalOpen(url, ...rest);
+      }
+      return null;
+    };
+  } catch {
+    // Ignore sandbox restrictions
+  }
+
+  try {
+    const isAdContent = (content) => AD_WRITE_RE.test(content);
+
+    const originalDocWrite = document.write.bind(document);
+    document.write = function (...args) {
+      const content = args.join("");
+      if (isAdContent(content)) {
+        return;
+      }
+      return originalDocWrite.apply(document, args);
+    };
+
+    if (document.writeln) {
+      const originalDocWriteln = document.writeln.bind(document);
+      document.writeln = function (...args) {
+        const content = args.join("");
+        if (isAdContent(content)) {
+          return;
+        }
+        return originalDocWriteln.apply(document, args);
+      };
+    }
+  } catch {
+    // Ignore if document.write cannot be rebound
+  }
+})();
