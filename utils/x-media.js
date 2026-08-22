@@ -8,6 +8,8 @@
     extractTweetId,
     findActionHost,
     findLikeButton,
+    findMediaDialog,
+    findMediaGridLinks,
     findMediaHost,
     isMediaList,
     tweetHasVisibleMedia,
@@ -67,20 +69,19 @@
     button.disabled = kind === "loading";
   };
 
-  const downloadArticle = async (article, root) => {
-    const tweetId = tweetIdFromArticle(article);
+  const downloadTarget = async ({ scope, tweetId, likeArticle }, root) => {
     setStatus(root, "正在下载", "loading");
     const pageMedia = await askPageMedia(tweetId);
     const response = await chrome.runtime.sendMessage({
       type: "utils.x.download",
       tweetId,
-      media: [...pageMedia, ...collectDomMedia(article)],
+      media: [...pageMedia, ...collectDomMedia(scope)],
     });
     if (response?.ok && response.count > 0) {
       setStatus(root, `已开始下载 ${response.count} 个文件`, "ok");
       // Only like once media is actually downloading, so a failed lookup never
       // leaves a like behind. Already-liked posts expose no "like" button.
-      findLikeButton(article)?.click();
+      findLikeButton(likeArticle)?.click();
     } else {
       setStatus(root, "没有找到可下载的媒体", "error");
     }
@@ -114,7 +115,7 @@
     return svg;
   };
 
-  const createButton = (article) => {
+  const createButton = (getTarget) => {
     const root = document.createElement("div");
     root.className = "utils-x-download";
     root.setAttribute(ROOT_ATTR, "");
@@ -139,7 +140,7 @@
     button.addEventListener("click", async (event) => {
       stop(event);
       try {
-        await downloadArticle(article, root);
+        await downloadTarget(getTarget(), root);
       } catch {
         setStatus(root, "下载失败", "error");
       }
@@ -177,7 +178,11 @@
     if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "bar")) {
       const host = findActionHost(article);
       if (host) {
-        const root = createButton(article);
+        const root = createButton(() => ({
+          scope: article,
+          tweetId: tweetIdFromArticle(article),
+          likeArticle: article,
+        }));
         root.setAttribute(ROOT_ATTR, "bar");
         attachDownloadButton(host, root);
       }
@@ -186,7 +191,11 @@
     if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "media")) {
       const media = findMediaHost(article);
       if (media && typeof media.append === "function") {
-        const root = createButton(article);
+        const root = createButton(() => ({
+          scope: article,
+          tweetId: tweetIdFromArticle(article),
+          likeArticle: article,
+        }));
         root.setAttribute(ROOT_ATTR, "media");
         root.classList.add("utils-x-download--overlay");
         pinMediaHost(media);
@@ -195,10 +204,47 @@
     }
   };
 
+  const injectMediaGrid = () => {
+    for (const link of findMediaGridLinks(document)) {
+      const host = link.parentElement;
+      if (!host?.append || host.querySelector?.(`[${ROOT_ATTR}="grid"]`)) {
+        continue;
+      }
+      const root = createButton(() => ({
+        scope: link,
+        tweetId: extractTweetId([link.getAttribute("href")]),
+      }));
+      root.setAttribute(ROOT_ATTR, "grid");
+      root.classList.add("utils-x-download--overlay");
+      pinMediaHost(host);
+      host.append(root);
+    }
+  };
+
+  const injectMediaViewer = () => {
+    const dialog = findMediaDialog(document);
+    if (!dialog || dialog.querySelector?.(`[${ROOT_ATTR}="viewer"]`)) {
+      return;
+    }
+    const host = findActionHost(dialog);
+    if (!host) {
+      return;
+    }
+    const root = createButton(() => ({
+      scope: dialog,
+      tweetId: extractTweetId([window.location.pathname]),
+    }));
+    root.setAttribute(ROOT_ATTR, "viewer");
+    root.classList.add("utils-x-download--viewer");
+    attachDownloadButton(host, root);
+  };
+
   const scan = () => {
     for (const article of document.querySelectorAll("article")) {
       injectArticle(article);
     }
+    injectMediaGrid();
+    injectMediaViewer();
   };
 
   window.addEventListener("message", (event) => {
