@@ -14,6 +14,11 @@
     return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(id)}&lang=en&token=${syndicationToken(id)}`;
   }
 
+  function tweetStatusUrl(tweetId) {
+    const id = String(tweetId ?? "");
+    return /^\d+$/.test(id) ? `https://x.com/i/status/${id}` : null;
+  }
+
   function isMediaList(media) {
     return (
       Array.isArray(media) &&
@@ -441,6 +446,10 @@
     return firstOwnMatch(article, '[data-testid="like"]');
   }
 
+  function findUnlikeButton(article) {
+    return firstOwnMatch(article, '[data-testid="unlike"]');
+  }
+
   // The last cell of X's action bar (the share cell) is a single-column grid, so
   // appending into it stacks the button *under* share. Add a sibling cell instead
   // so the button sits in the row, right after share.
@@ -459,6 +468,7 @@
     extractTweetId,
     findActionHost,
     findLikeButton,
+    findUnlikeButton,
     findMediaDialog,
     findMediaGridLinks,
     findMediaHost,
@@ -471,6 +481,7 @@
     syndicationToken,
     syndicationUrl,
     toOriginalImageUrl,
+    tweetStatusUrl,
     tweetHasVisibleMedia,
   };
 })();

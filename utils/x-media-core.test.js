@@ -9,6 +9,7 @@ const {
   attachDownloadButton,
   findActionHost,
   findLikeButton,
+  findUnlikeButton,
   findMediaDialog,
   findMediaGridLinks,
   findMediaHost,
@@ -21,6 +22,7 @@ const {
   syndicationToken,
   syndicationUrl,
   toOriginalImageUrl,
+  tweetStatusUrl,
   tweetHasVisibleMedia,
 } = globalThis.UtilsXMedia;
 
@@ -33,6 +35,12 @@ test("syndicationUrl encodes the tweet id and token", () => {
     syndicationUrl("719484841172054016"),
     "https://cdn.syndication.twimg.com/tweet-result?id=719484841172054016&lang=en&token=1qsbtgrhag1",
   );
+});
+
+test("tweetStatusUrl accepts only numeric tweet ids", () => {
+  assert.equal(tweetStatusUrl("2090770670603108545"), "https://x.com/i/status/2090770670603108545");
+  assert.equal(tweetStatusUrl("../settings"), null);
+  assert.equal(tweetStatusUrl(null), null);
 });
 
 test("toOriginalImageUrl upgrades modern query-name images", () => {
@@ -426,6 +434,21 @@ test("findLikeButton finds an unliked post's button and skips a liked one", () =
     '[data-testid="like"]': [],
   }).querySelectorAll;
   assert.equal(findLikeButton(liked), null);
+});
+
+test("findUnlikeButton detects an already-liked post", () => {
+  const article = {};
+  const unlike = ownNode(article);
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="unlike"]': [unlike],
+  }).querySelectorAll;
+  assert.equal(findUnlikeButton(article), unlike);
+
+  const unliked = {};
+  unliked.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="unlike"]': [],
+  }).querySelectorAll;
+  assert.equal(findUnlikeButton(unliked), null);
 });
 
 test("findLikeButton ignores a like button inside a quoted article", () => {

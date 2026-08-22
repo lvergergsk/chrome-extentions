@@ -8,10 +8,12 @@
     extractTweetId,
     findActionHost,
     findLikeButton,
+    findUnlikeButton,
     findMediaDialog,
     findMediaGridLinks,
     findMediaHost,
     isMediaList,
+    tweetStatusUrl,
     tweetHasVisibleMedia,
   } = globalThis.UtilsXMedia;
 
@@ -69,7 +71,7 @@
     button.disabled = kind === "loading";
   };
 
-  const downloadTarget = async ({ scope, tweetId, likeArticle }, root) => {
+  const downloadTarget = async ({ scope, tweetId, likeArticle, likeInBackground }, root) => {
     setStatus(root, "正在下载", "loading");
     const pageMedia = await askPageMedia(tweetId);
     const response = await chrome.runtime.sendMessage({
@@ -78,10 +80,14 @@
       media: [...pageMedia, ...collectDomMedia(scope)],
     });
     if (response?.ok && response.count > 0) {
-      setStatus(root, `已开始下载 ${response.count} 个文件`, "ok");
       // Only like once media is actually downloading, so a failed lookup never
       // leaves a like behind. Already-liked posts expose no "like" button.
       findLikeButton(likeArticle)?.click();
+      const likeResponse = likeInBackground
+        ? await chrome.runtime.sendMessage({ type: "utils.x.like", tweetId })
+        : null;
+      const suffix = likeInBackground ? (likeResponse?.ok ? "，已点赞" : "，点赞失败") : "";
+      setStatus(root, `已开始下载 ${response.count} 个文件${suffix}`, "ok");
     } else {
       setStatus(root, "没有找到可下载的媒体", "error");
     }
@@ -115,7 +121,7 @@
     return svg;
   };
 
-  const createButton = (getTarget) => {
+  const createButton = (getTarget, label = "下载图片或视频") => {
     const root = document.createElement("div");
     root.className = "utils-x-download";
     root.setAttribute(ROOT_ATTR, "");
@@ -123,8 +129,8 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className = "utils-x-download__btn";
-    button.setAttribute("aria-label", "下载图片或视频");
-    button.title = "下载图片或视频";
+    button.setAttribute("aria-label", label);
+    button.title = label;
     button.append(svgIcon());
 
     const status = document.createElement("span");
@@ -178,11 +184,14 @@
     if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "bar")) {
       const host = findActionHost(article);
       if (host) {
-        const root = createButton(() => ({
-          scope: article,
-          tweetId: tweetIdFromArticle(article),
-          likeArticle: article,
-        }));
+        const root = createButton(
+          () => ({
+            scope: article,
+            tweetId: tweetIdFromArticle(article),
+            likeArticle: article,
+          }),
+          "下载图片或视频并点赞帖子",
+        );
         root.setAttribute(ROOT_ATTR, "bar");
         attachDownloadButton(host, root);
       }
@@ -191,11 +200,14 @@
     if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "media")) {
       const media = findMediaHost(article);
       if (media && typeof media.append === "function") {
-        const root = createButton(() => ({
-          scope: article,
-          tweetId: tweetIdFromArticle(article),
-          likeArticle: article,
-        }));
+        const root = createButton(
+          () => ({
+            scope: article,
+            tweetId: tweetIdFromArticle(article),
+            likeArticle: article,
+          }),
+          "下载图片或视频并点赞帖子",
+        );
         root.setAttribute(ROOT_ATTR, "media");
         root.classList.add("utils-x-download--overlay");
         pinMediaHost(media);
@@ -210,10 +222,14 @@
       if (!host?.append || host.querySelector?.(`[${ROOT_ATTR}="grid"]`)) {
         continue;
       }
-      const root = createButton(() => ({
-        scope: link,
-        tweetId: extractTweetId([link.getAttribute("href")]),
-      }));
+      const root = createButton(
+        () => ({
+          scope: link,
+          tweetId: extractTweetId([link.getAttribute("href")]),
+          likeInBackground: true,
+        }),
+        "下载图片或视频并点赞帖子",
+      );
       root.setAttribute(ROOT_ATTR, "grid");
       root.classList.add("utils-x-download--overlay");
       pinMediaHost(host);
@@ -246,6 +262,41 @@
     injectMediaGrid();
     injectMediaViewer();
   };
+
+  const likeCurrentTweet = async (tweetId) => {
+    if (!tweetStatusUrl(tweetId)) {
+      return { ok: false, error: "bad-id" };
+    }
+    const deadline = Date.now() + 15000;
+    let clicked = false;
+    while (Date.now() < deadline) {
+      const article = [...document.querySelectorAll("article")].find(
+        (candidate) => tweetIdFromArticle(candidate) === tweetId,
+      );
+      if (article) {
+        if (findUnlikeButton(article)) {
+          return { ok: true, state: clicked ? "liked" : "already-liked" };
+        }
+        const button = findLikeButton(article);
+        if (button && !clicked) {
+          button.click();
+          clicked = true;
+        }
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+    }
+    return { ok: false, error: "like-timeout" };
+  };
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== "utils.x.like.current") {
+      return;
+    }
+    likeCurrentTweet(String(message.tweetId ?? ""))
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message ?? error) }));
+    return true;
+  });
 
   window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin || event.source !== window) {
