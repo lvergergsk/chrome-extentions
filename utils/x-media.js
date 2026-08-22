@@ -59,6 +59,11 @@
       window.setTimeout(() => finish([]), 500);
     });
 
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const statusTimers = new WeakMap();
+  const runIds = new WeakMap();
+
   const setStatus = (root, message, kind) => {
     const status = root.querySelector(".utils-x-download__status");
     const button = root.querySelector(".utils-x-download__btn");
@@ -69,34 +74,95 @@
     root.dataset.state = kind;
     button.setAttribute("aria-busy", kind === "loading" ? "true" : "false");
     button.disabled = kind === "loading";
+    window.clearTimeout(statusTimers.get(root));
+    if (kind === "ok" || kind === "warn" || kind === "error") {
+      statusTimers.set(root, window.setTimeout(() => setStatus(root, "", "idle"), 3600));
+    }
   };
 
-  const downloadTarget = async ({ scope, tweetId, likeArticle, likeInBackground }, root) => {
-    setStatus(root, "正在下载", "loading");
-    const pageMedia = await askPageMedia(tweetId);
-    const response = await chrome.runtime.sendMessage({
-      type: "utils.x.download",
-      tweetId,
-      media: [...pageMedia, ...collectDomMedia(scope)],
-    });
-    if (response?.ok && response.count > 0) {
-      // Only like once media is actually downloading, so a failed lookup never
-      // leaves a like behind. Already-liked posts expose no "like" button.
-      findLikeButton(likeArticle)?.click();
-      const likeResponse = likeInBackground
-        ? await chrome.runtime.sendMessage({ type: "utils.x.like", tweetId })
-        : null;
-      const suffix = likeInBackground ? (likeResponse?.ok ? "，已点赞" : "，点赞失败") : "";
-      setStatus(root, `已开始下载 ${response.count} 个文件${suffix}`, "ok");
-    } else {
-      setStatus(root, "没有找到可下载的媒体", "error");
+  // X flips the heart optimistically and rolls it back when the write fails, so
+  // a click alone proves nothing. Already-liked posts expose no "like" button,
+  // which is what keeps this from ever un-liking anything.
+  const likeInPage = async (scope) => {
+    if (findUnlikeButton(scope)) {
+      return { ok: true, state: "already-liked" };
     }
-    window.setTimeout(() => {
-      if (root.dataset.state !== "loading") {
-        setStatus(root, "", "idle");
+    const button = findLikeButton(scope);
+    if (!button) {
+      return { ok: false, error: "no-like-button" };
+    }
+    button.click();
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      await sleep(120);
+      if (findUnlikeButton(scope)) {
+        return { ok: true, state: "liked" };
       }
-    }, 2400);
+    }
+    return { ok: false, error: "like-unconfirmed" };
   };
+
+  const likeAfterDownload = ({ tweetId, likeArticle, likeInBackground }) => {
+    if (likeArticle) {
+      return likeInPage(likeArticle);
+    }
+    if (!likeInBackground) {
+      return Promise.resolve(null);
+    }
+    return chrome.runtime.sendMessage({ type: "utils.x.like", tweetId });
+  };
+
+  const downloadTarget = async (target, root) => {
+    const run = (runIds.get(root) ?? 0) + 1;
+    runIds.set(root, run);
+    setStatus(root, "正在下载", "loading");
+
+    let response;
+    try {
+      const pageMedia = await askPageMedia(target.tweetId);
+      response = await chrome.runtime.sendMessage({
+        type: "utils.x.download",
+        tweetId: target.tweetId,
+        media: [...pageMedia, ...collectDomMedia(target.scope)],
+      });
+    } catch (error) {
+      // Reloading the extension orphans every content script already on the
+      // page, and each message then throws. That reads as a broken download
+      // unless it says what actually happened.
+      const stale = !chrome.runtime?.id || /context invalidated/i.test(String(error?.message ?? error));
+      setStatus(root, stale ? "扩展已更新，请刷新页面" : "下载失败", "error");
+      return;
+    }
+    if (!response?.ok || !(response.count > 0)) {
+      const missing = !response?.error || response.error === "empty";
+      setStatus(root, missing ? "没有找到可下载的媒体" : "下载失败", "error");
+      return;
+    }
+
+    // Report the download the moment it starts. Liking can take seconds — the
+    // grid route drives a background tab — so it must never hold the button in
+    // its disabled loading state, and a like that fails must not be reported as
+    // a failed download.
+    const started = `已开始下载 ${response.count} 个文件`;
+    setStatus(root, started, "ok");
+
+    let like;
+    try {
+      like = await likeAfterDownload(target);
+    } catch {
+      like = { ok: false, error: "like-unreachable" };
+    }
+    if (!like || runIds.get(root) !== run) {
+      return;
+    }
+    setStatus(root, `${started}${like.ok ? "，已点赞" : "，点赞失败"}`, like.ok ? "ok" : "warn");
+  };
+
+  // X draws its action icons as filled 24x24 paths, so a stroked outline reads as
+  // foreign next to them. This is X's own share glyph with the arrow reversed.
+  const ICON_PATH =
+    "M12 17.41 6.29 11.7l1.42-1.41L11 13.59V4h2v9.59l3.29-3.3 1.42 1.41L12 17.41z" +
+    "M21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z";
 
   const svgIcon = () => {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -104,24 +170,15 @@
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
     svg.classList.add("utils-x-download__icon");
-    const stem = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    stem.setAttribute("d", "M12 3v12");
-    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    arrow.setAttribute("d", "m7 11 5 5 5-5");
-    const base = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    base.setAttribute("d", "M5 21h14");
-    for (const path of [stem, arrow, base]) {
-      path.setAttribute("fill", "none");
-      path.setAttribute("stroke", "currentColor");
-      path.setAttribute("stroke-width", "2");
-      path.setAttribute("stroke-linecap", "round");
-      path.setAttribute("stroke-linejoin", "round");
-      svg.append(path);
-    }
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", ICON_PATH);
+    svg.append(path);
     return svg;
   };
 
-  const createButton = (getTarget, label = "下载图片或视频") => {
+  const BUTTON_LABEL = "下载图片或视频并点赞帖子";
+
+  const createButton = (getTarget, label = BUTTON_LABEL) => {
     const root = document.createElement("div");
     root.className = "utils-x-download";
     root.setAttribute(ROOT_ATTR, "");
@@ -184,14 +241,11 @@
     if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "bar")) {
       const host = findActionHost(article);
       if (host) {
-        const root = createButton(
-          () => ({
-            scope: article,
-            tweetId: tweetIdFromArticle(article),
-            likeArticle: article,
-          }),
-          "下载图片或视频并点赞帖子",
-        );
+        const root = createButton(() => ({
+          scope: article,
+          tweetId: tweetIdFromArticle(article),
+          likeArticle: article,
+        }));
         root.setAttribute(ROOT_ATTR, "bar");
         attachDownloadButton(host, root);
       }
@@ -200,14 +254,11 @@
     if (!existing.some((node) => node.getAttribute(ROOT_ATTR) === "media")) {
       const media = findMediaHost(article);
       if (media && typeof media.append === "function") {
-        const root = createButton(
-          () => ({
-            scope: article,
-            tweetId: tweetIdFromArticle(article),
-            likeArticle: article,
-          }),
-          "下载图片或视频并点赞帖子",
-        );
+        const root = createButton(() => ({
+          scope: article,
+          tweetId: tweetIdFromArticle(article),
+          likeArticle: article,
+        }));
         root.setAttribute(ROOT_ATTR, "media");
         root.classList.add("utils-x-download--overlay");
         pinMediaHost(media);
@@ -222,14 +273,11 @@
       if (!host?.append || host.querySelector?.(`[${ROOT_ATTR}="grid"]`)) {
         continue;
       }
-      const root = createButton(
-        () => ({
-          scope: link,
-          tweetId: extractTweetId([link.getAttribute("href")]),
-          likeInBackground: true,
-        }),
-        "下载图片或视频并点赞帖子",
-      );
+      const root = createButton(() => ({
+        scope: link,
+        tweetId: extractTweetId([link.getAttribute("href")]),
+        likeInBackground: true,
+      }));
       root.setAttribute(ROOT_ATTR, "grid");
       root.classList.add("utils-x-download--overlay");
       pinMediaHost(host);
@@ -246,14 +294,11 @@
     if (!host) {
       return;
     }
-    const root = createButton(
-      () => ({
-        scope: dialog,
-        tweetId: extractTweetId([window.location.pathname]),
-        likeArticle: host,
-      }),
-      "下载图片或视频并点赞帖子",
-    );
+    const root = createButton(() => ({
+      scope: dialog,
+      tweetId: extractTweetId([window.location.pathname]),
+      likeArticle: host,
+    }));
     root.setAttribute(ROOT_ATTR, "viewer");
     root.classList.add("utils-x-download--viewer");
     attachDownloadButton(host, root);
@@ -267,6 +312,9 @@
     injectMediaViewer();
   };
 
+  const findTweetArticle = (tweetId) =>
+    [...document.querySelectorAll("article")].find((candidate) => tweetIdFromArticle(candidate) === tweetId) ?? null;
+
   const likeCurrentTweet = async (tweetId) => {
     if (!tweetStatusUrl(tweetId)) {
       return { ok: false, error: "bad-id" };
@@ -274,12 +322,20 @@
     const deadline = Date.now() + 15000;
     let clicked = false;
     while (Date.now() < deadline) {
-      const article = [...document.querySelectorAll("article")].find(
-        (candidate) => tweetIdFromArticle(candidate) === tweetId,
-      );
+      const article = findTweetArticle(tweetId);
       if (article) {
         if (findUnlikeButton(article)) {
-          return { ok: true, state: clicked ? "liked" : "already-liked" };
+          if (!clicked) {
+            return { ok: true, state: "already-liked" };
+          }
+          // The heart flips before X has written anything. Hold the tab open
+          // long enough to see the write stick, otherwise the caller closes it
+          // mid-request and the like quietly disappears.
+          await sleep(1500);
+          const settled = findTweetArticle(tweetId);
+          return settled && !findUnlikeButton(settled)
+            ? { ok: false, error: "like-reverted" }
+            : { ok: true, state: "liked" };
         }
         const button = findLikeButton(article);
         if (button && !clicked) {
@@ -287,7 +343,7 @@
           clicked = true;
         }
       }
-      await new Promise((resolve) => window.setTimeout(resolve, 100));
+      await sleep(100);
     }
     return { ok: false, error: "like-timeout" };
   };
