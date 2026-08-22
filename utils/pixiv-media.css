@@ -1,0 +1,191 @@
+/* Same component as the X download button, retuned for pixiv: every pixiv host is
+   an image tile or the full-size illustration link, so both variants are overlays.
+   pixiv hashes its class names on every build, so nothing here can hang off one. */
+.utils-pixiv-download {
+  --utils-pixiv-glyph: 18px;
+  --utils-pixiv-hit: 36px;
+  --utils-pixiv-accent: rgb(0, 150, 250);
+  --utils-pixiv-ok: rgb(0, 186, 124);
+  --utils-pixiv-warn: rgb(255, 190, 0);
+  --utils-pixiv-error: rgb(244, 33, 46);
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.utils-pixiv-download__btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--utils-pixiv-hit);
+  height: var(--utils-pixiv-hit);
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  color: rgb(255, 255, 255);
+  /* Deliberately no backdrop-filter: a pixiv grid puts sixty of these over images
+     at once and blurring each one locks up the renderer. */
+  background: rgba(0, 0, 0, 0.62);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  /* Dimmed rather than hidden: hover must not be the only way to discover the
+     control, and a grid of sixty opaque chips would fight the artwork. */
+  opacity: 0.55;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 180ms ease,
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+/* A 36px circle is smaller than a comfortable touch target, so the hit area is
+   padded out to 44px without growing the visible chip on a dense grid. */
+.utils-pixiv-download__btn::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+}
+
+.utils-pixiv-download__icon {
+  position: relative;
+  width: var(--utils-pixiv-glyph);
+  height: var(--utils-pixiv-glyph);
+  fill: currentColor;
+  transition: transform 180ms ease;
+}
+
+/* Hovering the tile, focusing the button, or any non-idle state brings it up to
+   full strength. `:hover > .utils-pixiv-download` matches the tile wrapper the
+   button was appended to, whose class name pixiv rehashes on every build. */
+.utils-pixiv-download__btn:hover,
+.utils-pixiv-download__btn:focus-visible,
+.utils-pixiv-download:not([data-state="idle"]) .utils-pixiv-download__btn,
+:hover > .utils-pixiv-download .utils-pixiv-download__btn,
+:focus-within > .utils-pixiv-download .utils-pixiv-download__btn {
+  opacity: 1;
+}
+
+.utils-pixiv-download__btn:hover {
+  background: rgba(0, 0, 0, 0.82);
+  transform: scale(1.06);
+}
+
+.utils-pixiv-download__btn:focus-visible {
+  outline: 2px solid var(--utils-pixiv-accent);
+  outline-offset: 2px;
+}
+
+.utils-pixiv-download__btn:active .utils-pixiv-download__icon {
+  transform: scale(0.92);
+}
+
+.utils-pixiv-download__btn:disabled {
+  cursor: progress;
+}
+
+.utils-pixiv-download[data-state="loading"] .utils-pixiv-download__icon {
+  animation: utils-pixiv-download-pulse 900ms ease-in-out infinite;
+}
+
+.utils-pixiv-download[data-state="ok"] .utils-pixiv-download__btn {
+  background: var(--utils-pixiv-ok);
+}
+
+.utils-pixiv-download[data-state="warn"] .utils-pixiv-download__btn {
+  color: rgb(20, 20, 20);
+  background: var(--utils-pixiv-warn);
+}
+
+.utils-pixiv-download[data-state="error"] .utils-pixiv-download__btn {
+  background: var(--utils-pixiv-error);
+}
+
+@keyframes utils-pixiv-download-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Readable feedback: a silent success and a failed download must not look the
+   same. The pill hangs below the button because a tile clips nothing above it but
+   the row above is another tile. */
+.utils-pixiv-download__status {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  max-width: 15rem;
+  padding: 4px 9px;
+  border-radius: 8px;
+  color: rgb(255, 255, 255);
+  background: rgba(15, 20, 25, 0.94);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.utils-pixiv-download:not([data-state="idle"]) .utils-pixiv-download__status:not(:empty) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.utils-pixiv-download[data-state="ok"] .utils-pixiv-download__status {
+  background: rgba(0, 122, 82, 0.96);
+}
+
+.utils-pixiv-download[data-state="warn"] .utils-pixiv-download__status {
+  background: rgba(122, 96, 0, 0.96);
+}
+
+.utils-pixiv-download[data-state="error"] .utils-pixiv-download__status {
+  background: rgba(140, 20, 28, 0.96);
+}
+
+/* The artwork page. Its illustration is large and never crowded, so the button is
+   bigger and always visible instead of waiting for hover. */
+.utils-pixiv-download[data-utils-pixiv-download="main"] {
+  --utils-pixiv-glyph: 22px;
+  --utils-pixiv-hit: 44px;
+  top: 12px;
+  right: 12px;
+}
+
+.utils-pixiv-download[data-utils-pixiv-download="main"] .utils-pixiv-download__btn {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .utils-pixiv-download__btn,
+  .utils-pixiv-download__icon,
+  .utils-pixiv-download__status {
+    transition: none;
+  }
+
+  .utils-pixiv-download[data-state="loading"] .utils-pixiv-download__icon {
+    animation: none;
+    opacity: 0.55;
+  }
+
+  .utils-pixiv-download__btn:hover,
+  .utils-pixiv-download__btn:active .utils-pixiv-download__icon {
+    transform: none;
+  }
+}
