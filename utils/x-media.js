@@ -246,10 +246,14 @@
     if (!host) {
       return;
     }
-    const root = createButton(() => ({
-      scope: dialog,
-      tweetId: extractTweetId([window.location.pathname]),
-    }));
+    const root = createButton(
+      () => ({
+        scope: dialog,
+        tweetId: extractTweetId([window.location.pathname]),
+        likeArticle: host,
+      }),
+      "下载图片或视频并点赞帖子",
+    );
     root.setAttribute(ROOT_ATTR, "viewer");
     root.classList.add("utils-x-download--viewer");
     attachDownloadButton(host, root);
