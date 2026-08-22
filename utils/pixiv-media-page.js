@@ -5,8 +5,17 @@
 // issued by the extension, not by the page, so it carries neither pixiv's cookies
 // nor its Referer; the page context sends both without being asked.
 (() => {
-  const { LIKE_ENDPOINT, csrfToken, illustEndpoint, isIllustId, isUgoira, originalUrls, pagesEndpoint } =
-    globalThis.UtilsPixivMedia;
+  const {
+    BOOKMARK_ENDPOINT,
+    bookmarkPayload,
+    csrfToken,
+    illustEndpoint,
+    isBookmarked,
+    isIllustId,
+    isUgoira,
+    originalUrls,
+    pagesEndpoint,
+  } = globalThis.UtilsPixivMedia;
 
   const SOURCE = "utils-pixiv-media";
 
@@ -43,13 +52,13 @@
     if (urls.length === 0) {
       return { ok: false, error: "empty" };
     }
-    return { ok: true, urls, liked: illust?.likeData === true };
+    return { ok: true, urls, bookmarked: isBookmarked(illust) };
   };
 
-  // Unlike X there is no heart to click from a grid tile, so the like goes straight
-  // to the API. pixiv answers is_liked: true when the work was already liked, which
-  // is what keeps a second click from reading as a failure.
-  const likeIllust = async (illustId) => {
+  // Unlike X there is no heart to click from a grid tile, so the bookmark goes
+  // straight to the API. Re-adding an existing bookmark would overwrite its tags
+  // and comment, so an already-bookmarked work is short-circuited by the caller.
+  const bookmarkIllust = async (illustId) => {
     if (!isIllustId(illustId)) {
       return { ok: false, error: "bad-id" };
     }
@@ -57,14 +66,14 @@
     if (!token) {
       return { ok: false, error: "no-token" };
     }
-    const response = await fetch(LIKE_ENDPOINT, {
+    const response = await fetch(BOOKMARK_ENDPOINT, {
       method: "POST",
       credentials: "include",
       headers: {
         "content-type": "application/json; charset=utf-8",
         "x-csrf-token": token,
       },
-      body: JSON.stringify({ illust_id: String(illustId) }),
+      body: JSON.stringify(bookmarkPayload(illustId)),
     });
     if (!response.ok) {
       return { ok: false, error: `http-${response.status}` };
@@ -73,15 +82,15 @@
     if (data?.error) {
       return { ok: false, error: String(data.message || "rejected") };
     }
-    return { ok: true, state: data?.body?.is_liked ? "already-liked" : "liked" };
+    return { ok: true, state: "bookmarked" };
   };
 
   const handle = (type, illustId) => {
     if (type === "resolve") {
       return resolveIllust(illustId);
     }
-    if (type === "like") {
-      return likeIllust(illustId);
+    if (type === "bookmark") {
+      return bookmarkIllust(illustId);
     }
     return Promise.resolve({ ok: false, error: "unknown-request" });
   };
@@ -91,7 +100,7 @@
       return;
     }
     const data = event.data;
-    if (!data || data.source !== SOURCE || (data.type !== "resolve" && data.type !== "like")) {
+    if (!data || data.source !== SOURCE || (data.type !== "resolve" && data.type !== "bookmark")) {
       return;
     }
     // Always answer: the isolated side would otherwise wait for its full timeout.

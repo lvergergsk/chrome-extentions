@@ -10,7 +10,9 @@
   const THUMBNAIL_LINK = 'a[data-ga4-label="thumbnail_link"]';
   const ORIGINAL_LINK = 'a[href*="i.pximg.net/img-original/"]';
   const PRESENTATION_IMAGE = '[role="presentation"] img[src*="i.pximg.net"]';
-  const LIKE_ENDPOINT = "https://www.pixiv.net/ajax/illusts/like";
+  const BOOKMARK_ENDPOINT = "https://www.pixiv.net/ajax/illusts/bookmarks/add";
+  // 0 keeps the bookmark on the public profile, which is pixiv's own default; 1 hides it.
+  const BOOKMARK_RESTRICT_PUBLIC = 0;
   // illustType 2 is うごイラ: a per-frame zip plus a delay table, not an image.
   const UGOIRA_TYPE = 2;
 
@@ -82,6 +84,21 @@
     return Number(illust?.illustType) === UGOIRA_TYPE;
   }
 
+  // bookmarkData is an object once the work is bookmarked and null while it is not,
+  // and it already rides along in the list responses pixiv draws its own heart from.
+  function isBookmarked(illust) {
+    return illust?.bookmarkData != null;
+  }
+
+  function bookmarkPayload(illustId, restrict = BOOKMARK_RESTRICT_PUBLIC) {
+    return {
+      illust_id: String(illustId),
+      restrict: Number(restrict) === 1 ? 1 : BOOKMARK_RESTRICT_PUBLIC,
+      comment: "",
+      tags: [],
+    };
+  }
+
   // /ajax/illust/{id} already carries page 0; /pages is only fetched for multi-page
   // works, so both shapes have to merge into one ordered, de-duplicated list.
   function originalUrls(illust, pages) {
@@ -90,7 +107,7 @@
     return dedupeUrls([...fromPages, ...single]);
   }
 
-  // pixiv is a Next.js app now: the CSRF token the like endpoint wants lives in a
+  // pixiv is a Next.js app now: the CSRF token the bookmark endpoint wants lives in a
   // JSON string nested inside the __NEXT_DATA__ JSON, not in a meta tag any more.
   // The old meta#meta-global-data still appears on legacy pages, so try both.
   function csrfTokenFromNextData(text) {
@@ -182,7 +199,9 @@
   }
 
   globalThis.UtilsPixivMedia = {
-    LIKE_ENDPOINT,
+    BOOKMARK_ENDPOINT,
+    BOOKMARK_RESTRICT_PUBLIC,
+    bookmarkPayload,
     csrfToken,
     csrfTokenFromLegacyMeta,
     csrfTokenFromNextData,
@@ -192,6 +211,7 @@
     illustEndpoint,
     illustIdFrom,
     illustPageIndex,
+    isBookmarked,
     isIllustId,
     isPixivImageUrl,
     isUgoira,

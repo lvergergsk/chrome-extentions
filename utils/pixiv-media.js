@@ -56,11 +56,11 @@
     }
   };
 
-  const likeLabel = (like) => {
-    if (!like?.ok) {
-      return "，点赞失败";
+  const bookmarkLabel = (bookmark) => {
+    if (!bookmark?.ok) {
+      return "，收藏失败";
     }
-    return like.state === "already-liked" ? "，已经赞过" : "，已点赞";
+    return bookmark.state === "already-bookmarked" ? "，已经收藏过" : "，已收藏";
   };
 
   const downloadIllust = async (illustId, root) => {
@@ -97,17 +97,20 @@
       return;
     }
 
-    // Report the download the moment it starts. The like is a second round trip
+    // Report the download the moment it starts. The bookmark is a second round trip
     // through the page and must never hold the button in its disabled loading
     // state, nor turn a finished download into a reported failure.
     const started = `已开始下载 ${response.count} 张`;
     setStatus(root, started, "ok");
 
-    const like = resolved.liked ? { ok: true, state: "already-liked" } : await askPage("like", illustId);
+    // Re-adding an existing bookmark would wipe the tags and comment already on it.
+    const bookmark = resolved.bookmarked
+      ? { ok: true, state: "already-bookmarked" }
+      : await askPage("bookmark", illustId);
     if (runIds.get(root) !== run) {
       return;
     }
-    setStatus(root, `${started}${likeLabel(like)}`, like.ok ? "ok" : "warn");
+    setStatus(root, `${started}${bookmarkLabel(bookmark)}`, bookmark.ok ? "ok" : "warn");
   };
 
   // Same glyph as the X button so the two surfaces read as one feature: a filled
@@ -128,7 +131,7 @@
     return svg;
   };
 
-  const BUTTON_LABEL = "下载原图并点赞作品";
+  const BUTTON_LABEL = "下载原图并收藏作品";
 
   const createButton = (illustId) => {
     const root = document.createElement("div");

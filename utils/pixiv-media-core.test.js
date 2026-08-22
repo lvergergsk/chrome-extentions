@@ -3,6 +3,8 @@ import test from "node:test";
 import "./pixiv-media-core.js";
 
 const {
+  BOOKMARK_ENDPOINT,
+  bookmarkPayload,
   csrfToken,
   csrfTokenFromLegacyMeta,
   csrfTokenFromNextData,
@@ -12,6 +14,7 @@ const {
   illustEndpoint,
   illustIdFrom,
   illustPageIndex,
+  isBookmarked,
   isIllustId,
   isPixivImageUrl,
   isUgoira,
@@ -85,6 +88,25 @@ test("dedupeUrls drops duplicates and anything off the pixiv image host", () => 
     dedupeUrls([original("1", 0), original("1", 0), "https://evil.example/a.jpg", null, original("1", 1)]),
     [original("1", 0), original("1", 1)],
   );
+});
+
+test("isBookmarked reads the bookmarkData pixiv already ships in list responses", () => {
+  assert.equal(isBookmarked({ bookmarkData: { id: "1", private: false } }), true);
+  assert.equal(isBookmarked({ bookmarkData: null }), false);
+  assert.equal(isBookmarked({}), false);
+  assert.equal(isBookmarked(null), false);
+});
+
+test("bookmarkPayload posts a public bookmark and never invents tags or a comment", () => {
+  assert.equal(BOOKMARK_ENDPOINT, "https://www.pixiv.net/ajax/illusts/bookmarks/add");
+  assert.deepEqual(bookmarkPayload(148755888), {
+    illust_id: "148755888",
+    restrict: 0,
+    comment: "",
+    tags: [],
+  });
+  assert.equal(bookmarkPayload("1", 1).restrict, 1);
+  assert.equal(bookmarkPayload("1", "nonsense").restrict, 0);
 });
 
 test("isUgoira only matches illustType 2", () => {
