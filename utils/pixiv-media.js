@@ -2,8 +2,17 @@
 // file in one content_scripts entry shares a single global lexical scope, so a
 // top-level name here would collide with pixiv-media-core.js and kill the whole file.
 (() => {
-  const { domOriginalUrls, illustIdFrom, isIllustId, mainIllustHosts, thumbnailHost, thumbnailLinks } =
-    globalThis.UtilsPixivMedia;
+  const {
+    domOriginalUrls,
+    findMainBookmarkButton,
+    findTileBookmarkButton,
+    illustIdFrom,
+    isBookmarkOn,
+    isIllustId,
+    mainIllustHosts,
+    thumbnailHost,
+    thumbnailLinks,
+  } = globalThis.UtilsPixivMedia;
 
   const SOURCE = "utils-pixiv-media";
   const ROOT_ATTR = "data-utils-pixiv-download";
@@ -53,6 +62,52 @@
     if (kind === "ok" || kind === "warn" || kind === "error") {
       statusTimers.set(root, window.setTimeout(() => setStatus(root, "", "idle"), 3600));
     }
+  };
+
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const heartIsOn = (button) => isBookmarkOn(button, (svg) => getComputedStyle(svg).color);
+
+  const BOOKMARK_FLIP_MS = 4000;
+
+  // Clicking pixiv's own heart is what makes pixiv's UI catch up. The API write
+  // behind our back is correct on the server but leaves the heart grey until the
+  // page reloads, which is what this replaces.
+  const bookmarkThroughPixiv = async (find) => {
+    const button = find();
+    if (!button) {
+      // No heart on this surface; the caller falls back to the API.
+      return null;
+    }
+    if (heartIsOn(button)) {
+      return { ok: true, state: "already-bookmarked" };
+    }
+    button.click();
+    const deadline = Date.now() + BOOKMARK_FLIP_MS;
+    while (Date.now() < deadline) {
+      await sleep(150);
+      const current = find();
+      // The artwork page answers by dropping gtm-main-bookmark, so a vanished
+      // button means saved; a tile keeps its button and turns the heart pink.
+      if (!current || heartIsOn(current)) {
+        return { ok: true, state: "bookmarked" };
+      }
+    }
+    return { ok: false, error: "bookmark-unconfirmed" };
+  };
+
+  const bookmarkIllust = async (illustId, root) => {
+    // The artwork page's heart answers a click, and pixiv then updates its own UI.
+    // A tile's heart answers nothing — not a synthetic click, not a full pointer
+    // sequence, not even a real one — so a tile bookmark goes through the API and
+    // pixiv's heart there stays grey until the page reloads.
+    if (root.getAttribute(ROOT_ATTR) === "main") {
+      const clicked = await bookmarkThroughPixiv(() => findMainBookmarkButton(document));
+      if (clicked) {
+        return clicked;
+      }
+    }
+    return askIllust("bookmark", illustId);
   };
 
   const bookmarkLabel = (bookmark) => {
@@ -111,7 +166,7 @@
     // Re-adding an existing bookmark would wipe the tags and comment already on it.
     const bookmark = resolved.bookmarked
       ? { ok: true, state: "already-bookmarked" }
-      : await askIllust("bookmark", illustId);
+      : await bookmarkIllust(illustId, root);
     if (runIds.get(root) !== run) {
       return;
     }
