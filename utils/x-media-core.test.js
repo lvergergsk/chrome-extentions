@@ -9,6 +9,9 @@ const {
   attachDownloadButton,
   findActionHost,
   findLikeButton,
+  findUnlikeButton,
+  findMediaDialog,
+  findMediaGridLinks,
   findMediaHost,
   firstOwnMatch,
   harvestTweetMedia,
@@ -19,6 +22,7 @@ const {
   syndicationToken,
   syndicationUrl,
   toOriginalImageUrl,
+  tweetStatusUrl,
   tweetHasVisibleMedia,
 } = globalThis.UtilsXMedia;
 
@@ -31,6 +35,12 @@ test("syndicationUrl encodes the tweet id and token", () => {
     syndicationUrl("719484841172054016"),
     "https://cdn.syndication.twimg.com/tweet-result?id=719484841172054016&lang=en&token=1qsbtgrhag1",
   );
+});
+
+test("tweetStatusUrl accepts only numeric tweet ids", () => {
+  assert.equal(tweetStatusUrl("2090770670603108545"), "https://x.com/i/status/2090770670603108545");
+  assert.equal(tweetStatusUrl("../settings"), null);
+  assert.equal(tweetStatusUrl(null), null);
 });
 
 test("toOriginalImageUrl upgrades modern query-name images", () => {
@@ -67,6 +77,15 @@ test("isAllowedMediaUrl only allows X media hosts over https", () => {
   assert.equal(isAllowedMediaUrl("https://pbs.twimg.com/media/abc.jpg"), true);
   assert.equal(isAllowedMediaUrl("https://evil.example/a.mp4"), false);
   assert.equal(isAllowedMediaUrl("blob:https://x.com/123"), false);
+});
+
+test("URL and media helpers fail closed for malformed input", () => {
+  assert.equal(toOriginalImageUrl("not-a-url"), null);
+  assert.equal(isAllowedMediaUrl("not-a-url"), false);
+  assert.equal(downloadFilename(null, 0, "not-a-url"), "x-tweet-1.jpg");
+  assert.equal(pickBestMp4(), null);
+  assert.equal(extractTweetId(), null);
+  assert.deepEqual(mergeMedia(), []);
 });
 
 test("pickBestMp4 selects the highest-bitrate mp4 and skips HLS", () => {
@@ -417,6 +436,21 @@ test("findLikeButton finds an unliked post's button and skips a liked one", () =
   assert.equal(findLikeButton(liked), null);
 });
 
+test("findUnlikeButton detects an already-liked post", () => {
+  const article = {};
+  const unlike = ownNode(article);
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="unlike"]': [unlike],
+  }).querySelectorAll;
+  assert.equal(findUnlikeButton(article), unlike);
+
+  const unliked = {};
+  unliked.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="unlike"]': [],
+  }).querySelectorAll;
+  assert.equal(findUnlikeButton(unliked), null);
+});
+
 test("findLikeButton ignores a like button inside a quoted article", () => {
   const article = {};
   const other = {};
@@ -433,4 +467,97 @@ test("findMediaHost returns this article's video player", () => {
     '[data-testid="videoPlayer"]': [player],
   }).querySelectorAll;
   assert.equal(findMediaHost(article), player);
+});
+
+test("findMediaHost covers every photo of a multi-photo tweet", () => {
+  const article = {};
+  const wrapper = {};
+  const tileA = { closest: () => article, parentElement: wrapper };
+  const tileB = { closest: () => article };
+  wrapper.parentElement = article;
+  wrapper.querySelector = () => null;
+  wrapper.contains = (node) => node === tileA || node === tileB;
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="tweetPhoto"]': [tileA, tileB],
+  }).querySelectorAll;
+
+  assert.equal(findMediaHost(article), wrapper);
+});
+
+test("findMediaHost stops before a wrapper that also holds the tweet text", () => {
+  const article = {};
+  const wrapper = {
+    parentElement: article,
+    querySelector: (selector) => (selector.includes("tweetText") ? {} : null),
+    contains: () => true,
+  };
+  const tileA = { closest: () => article, parentElement: wrapper };
+  const tileB = { closest: () => article };
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="tweetPhoto"]': [tileA, tileB],
+  }).querySelectorAll;
+
+  assert.equal(findMediaHost(article), tileA);
+});
+
+test("findMediaGridLinks returns standalone photo tiles only", () => {
+  const article = {};
+  const dialog = {};
+  const photo = { src: "https://pbs.twimg.com/media/GridPhoto?format=jpg&name=small" };
+  const tile = {
+    querySelector: () => photo,
+    closest: () => null,
+  };
+  const articleTile = {
+    querySelector: () => photo,
+    closest: (selector) => (selector === "article" ? article : null),
+  };
+  const dialogTile = {
+    querySelector: () => photo,
+    closest: (selector) => (selector === '[role="dialog"]' ? dialog : null),
+  };
+  const root = {
+    querySelectorAll: () => [tile, articleTile, dialogTile, { querySelector: () => null, closest: () => null }],
+  };
+
+  assert.deepEqual(findMediaGridLinks(root), [tile]);
+});
+
+test("findMediaDialog and findActionHost locate the photo viewer action bar", () => {
+  const dialog = {};
+  const actionGroup = {
+    parentElement: dialog,
+    querySelector(selector) {
+      return /reply|retweet|like/.test(selector) ? {} : null;
+    },
+    querySelectorAll: () => [{}, {}, {}],
+    closest: () => null,
+  };
+  dialog.contains = (node) => node === actionGroup;
+  dialog.querySelectorAll = (selector) => {
+    if (selector.includes("reply") || selector.includes("retweet") || selector.includes("like")) {
+      return [{ parentElement: actionGroup, closest: () => null }];
+    }
+    if (selector === '[role="group"]') {
+      return [actionGroup];
+    }
+    return [];
+  };
+  const swipe = { closest: (selector) => (selector === '[role="dialog"]' ? dialog : null) };
+  const root = { querySelector: () => swipe };
+
+  assert.equal(findMediaDialog(root), dialog);
+  assert.equal(findActionHost(dialog), actionGroup);
+});
+
+test("DOM helpers tolerate missing X surfaces", () => {
+  assert.deepEqual(collectDomMedia(null), []);
+  assert.equal(firstOwnMatch(null, "button"), null);
+  assert.equal(tweetHasVisibleMedia(null), false);
+  assert.equal(findActionHost(null), null);
+  assert.equal(findMediaHost(null), null);
+  assert.equal(findLikeButton(null), null);
+  assert.deepEqual(findMediaGridLinks(null), []);
+  assert.equal(findMediaDialog({}), null);
+  assert.equal(attachDownloadButton(null, {}), false);
 });

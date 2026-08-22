@@ -14,6 +14,11 @@
     return `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(id)}&lang=en&token=${syndicationToken(id)}`;
   }
 
+  function tweetStatusUrl(tweetId) {
+    const id = String(tweetId ?? "");
+    return /^\d+$/.test(id) ? `https://x.com/i/status/${id}` : null;
+  }
+
   function isMediaList(media) {
     return (
       Array.isArray(media) &&
@@ -262,28 +267,47 @@
     return merged.filter((item) => item.kind !== "photo" || !VIDEO_THUMB_RE.test(item.url));
   }
 
-  function belongsToArticle(node, article) {
-    return typeof node.closest === "function" ? node.closest("article") === article : false;
-  }
-
-  function firstOwnMatch(article, selector) {
-    if (!article || typeof article.querySelectorAll !== "function" || typeof selector !== "string") {
-      return null;
+  function belongsToScope(node, scope) {
+    if (!node || !scope) {
+      return false;
     }
-    return [...article.querySelectorAll(selector)].find((node) => belongsToArticle(node, article)) ?? null;
+    const article = typeof node.closest === "function" ? node.closest("article") : null;
+    if (article) {
+      return article === scope;
+    }
+    if (typeof scope.contains === "function" && scope.contains(node)) {
+      return true;
+    }
+    for (let current = node; current; current = current.parentElement) {
+      if (current === scope) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  function collectDomMedia(article) {
-    if (!article || typeof article.querySelectorAll !== "function") {
+  function ownMatches(scope, selector) {
+    if (!scope || typeof scope.querySelectorAll !== "function" || typeof selector !== "string") {
       return [];
     }
-    const photos = [...article.querySelectorAll("img")]
-      .filter((image) => belongsToArticle(image, article))
+    return [...scope.querySelectorAll(selector)].filter((node) => belongsToScope(node, scope));
+  }
+
+  function firstOwnMatch(scope, selector) {
+    return ownMatches(scope, selector)[0] ?? null;
+  }
+
+  function collectDomMedia(scope) {
+    if (!scope || typeof scope.querySelectorAll !== "function") {
+      return [];
+    }
+    const photos = [...scope.querySelectorAll("img")]
+      .filter((image) => belongsToScope(image, scope))
       .map((image) => toOriginalImageUrl(image.src))
       .filter(Boolean)
       .map((url) => ({ kind: "photo", url }));
-    const videos = [...article.querySelectorAll("video, source")]
-      .filter((node) => belongsToArticle(node, article))
+    const videos = [...scope.querySelectorAll("video, source")]
+      .filter((node) => belongsToScope(node, scope))
       .map((node) => node.src)
       .filter((src) => isAllowedMediaUrl(src))
       .map((url) => ({ kind: "video", url }));
@@ -308,7 +332,7 @@
     if (!article || typeof article.querySelectorAll !== "function") {
       return false;
     }
-    return [...article.querySelectorAll(VISIBLE_MEDIA)].some((node) => belongsToArticle(node, article));
+    return [...article.querySelectorAll(VISIBLE_MEDIA)].some((node) => belongsToScope(node, article));
   }
 
   const ACTION_ANCHORS = [
@@ -337,8 +361,8 @@
     '[data-testid="previewInterstitial"]',
   ].join(", ");
 
-  function isActionBar(node, article) {
-    if (!node || node === article || !belongsToArticle(node, article) || typeof node.querySelector !== "function") {
+  function isActionBar(node, scope) {
+    if (!node || node === scope || !belongsToScope(node, scope) || typeof node.querySelector !== "function") {
       return false;
     }
     let hits = 0;
@@ -350,10 +374,10 @@
     return hits >= 2;
   }
 
-  function actionBarFrom(seed, article) {
+  function actionBarFrom(seed, scope) {
     let node = seed;
-    for (let depth = 0; depth < 12 && node && node !== article; depth += 1) {
-      if (isActionBar(node, article)) {
+    for (let depth = 0; depth < 12 && node && node !== scope; depth += 1) {
+      if (isActionBar(node, scope)) {
         return node;
       }
       node = node.parentElement;
@@ -361,35 +385,35 @@
     return null;
   }
 
-  function findActionHost(article) {
-    if (!article || typeof article.querySelectorAll !== "function") {
+  function findActionHost(scope) {
+    if (!scope || typeof scope.querySelectorAll !== "function") {
       return null;
     }
 
     for (const selector of ACTION_ANCHORS) {
-      const button = firstOwnMatch(article, selector);
-      const host = button ? actionBarFrom(button, article) : null;
+      const button = firstOwnMatch(scope, selector);
+      const host = button ? actionBarFrom(button, scope) : null;
       if (host) {
         return host;
       }
     }
 
-    const labeledGroup = [...article.querySelectorAll('[role="group"]')].find(
-      (node) => belongsToArticle(node, article) && node.querySelectorAll?.("button").length >= 3,
+    const labeledGroup = [...scope.querySelectorAll('[role="group"]')].find(
+      (node) => belongsToScope(node, scope) && node.querySelectorAll?.("button").length >= 3,
     );
     if (labeledGroup) {
       return labeledGroup;
     }
 
-    const actionButtons = [...article.querySelectorAll("button")].filter((button) => {
-      if (!belongsToArticle(button, article)) {
+    const actionButtons = [...scope.querySelectorAll("button")].filter((button) => {
+      if (!belongsToScope(button, scope)) {
         return false;
       }
       return ACTION_LABEL.test(`${button.getAttribute?.("aria-label") ?? ""} ${button.textContent ?? ""}`);
     });
     for (const button of actionButtons) {
       let row = button.parentElement;
-      for (let depth = 0; depth < 6 && row && row !== article; depth += 1) {
+      for (let depth = 0; depth < 6 && row && row !== scope; depth += 1) {
         if (row.querySelectorAll?.("button").length >= 3) {
           return row;
         }
@@ -400,13 +424,50 @@
   }
 
   function findMediaHost(article) {
-    return firstOwnMatch(article, MEDIA_HOSTS);
+    const tiles = ownMatches(article, MEDIA_HOSTS);
+    const first = tiles[0] ?? null;
+    if (tiles.length < 2) {
+      return first;
+    }
+    // A 2- or 4-photo tweet renders one media host per photo, so pinning the
+    // button to the first one leaves the other tiles bare. Walk up to the
+    // smallest wrapper that covers every tile instead, stopping short of the
+    // node that also holds the tweet text.
+    let node = first.parentElement;
+    for (let depth = 0; depth < 6 && node && node !== article; depth += 1) {
+      if (!node.querySelector?.('[data-testid="tweetText"]') && tiles.every((tile) => node.contains?.(tile))) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return first;
+  }
+
+  function findMediaGridLinks(root) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+      return [];
+    }
+    return [...root.querySelectorAll('a[href*="/photo/"]')].filter(
+      (link) =>
+        link.querySelector?.('img[src*="pbs.twimg.com/media/"]') &&
+        !link.closest?.("article") &&
+        !link.closest?.('[role="dialog"]'),
+    );
+  }
+
+  function findMediaDialog(root) {
+    const swipe = root?.querySelector?.('[data-testid="swipe-to-dismiss"]');
+    return swipe?.closest?.('[role="dialog"]') ?? null;
   }
 
   // X swaps the testid to "unlike" once a post is liked, so a null result means
   // there is nothing to do rather than that the button is missing.
   function findLikeButton(article) {
     return firstOwnMatch(article, '[data-testid="like"]');
+  }
+
+  function findUnlikeButton(article) {
+    return firstOwnMatch(article, '[data-testid="unlike"]');
   }
 
   // The last cell of X's action bar (the share cell) is a single-column grid, so
@@ -427,6 +488,9 @@
     extractTweetId,
     findActionHost,
     findLikeButton,
+    findUnlikeButton,
+    findMediaDialog,
+    findMediaGridLinks,
     findMediaHost,
     firstOwnMatch,
     harvestTweetMedia,
@@ -437,6 +501,7 @@
     syndicationToken,
     syndicationUrl,
     toOriginalImageUrl,
+    tweetStatusUrl,
     tweetHasVisibleMedia,
   };
 })();

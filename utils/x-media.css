@@ -1,9 +1,16 @@
+/* Metrics copied from X's own action row: a 18.75px filled glyph in a 36px cell,
+   with the hover tint drawn as a circle behind the glyph so the row keeps its
+   width. light-dark() reads the color-scheme X sets on <html>, so the button
+   follows X's own light/dark theme instead of guessing from the OS. */
 .utils-x-download {
-  --utils-x-fg: rgb(113, 118, 123);
-  --utils-x-accent: #38bdf8;
-  --utils-x-hover: rgba(56, 189, 248, 0.16);
-  --utils-x-focus: #7dd3fc;
-  --utils-x-glass: rgba(15, 23, 42, 0.42);
+  --utils-x-glyph: 18.75px;
+  --utils-x-row: 36px;
+  --utils-x-idle: light-dark(rgb(83, 100, 113), rgb(113, 118, 123));
+  --utils-x-accent: rgb(29, 155, 240);
+  --utils-x-accent-soft: rgba(29, 155, 240, 0.1);
+  --utils-x-ok: rgb(0, 186, 124);
+  --utils-x-warn: rgb(255, 212, 0);
+  --utils-x-error: rgb(244, 33, 46);
   position: relative;
   display: flex;
   /* Matches X's own bookmark/share cells so the button joins the row instead of
@@ -11,93 +18,243 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  min-height: 36px;
+  min-height: var(--utils-x-row);
 }
 
 .utils-x-download__btn {
+  position: relative;
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: var(--utils-x-glyph);
+  height: var(--utils-x-glyph);
   padding: 0;
   border: 0;
-  border-radius: 999px;
-  color: var(--utils-x-fg);
+  color: var(--utils-x-idle);
   background: transparent;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* X paints the hover circle behind the glyph and lets it overflow the cell. */
+.utils-x-download__btn::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: transparent;
+  transition: background-color 180ms ease;
+}
+
+.utils-x-download__icon {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
   transition:
-    color 180ms ease,
-    background-color 180ms ease,
-    box-shadow 180ms ease,
+    fill 180ms ease,
     transform 180ms ease;
 }
 
 .utils-x-download__btn:hover,
 .utils-x-download__btn:focus-visible {
   color: var(--utils-x-accent);
-  background: var(--utils-x-hover);
+}
+
+.utils-x-download__btn:hover::before,
+.utils-x-download__btn:focus-visible::before {
+  background: var(--utils-x-accent-soft);
 }
 
 .utils-x-download__btn:focus-visible {
-  outline: 2px solid var(--utils-x-focus);
-  outline-offset: 2px;
+  outline: none;
 }
 
-.utils-x-download__btn:active {
-  transform: translateY(1px);
+.utils-x-download__btn:focus-visible::before {
+  outline: 2px solid var(--utils-x-accent);
+  outline-offset: 0;
+}
+
+.utils-x-download__btn:active .utils-x-download__icon {
+  transform: scale(0.92);
 }
 
 .utils-x-download__btn:disabled {
-  cursor: wait;
-  opacity: 0.7;
+  cursor: progress;
 }
 
-.utils-x-download__icon {
-  width: 18.75px;
-  height: 18.75px;
+.utils-x-download[data-state="loading"] .utils-x-download__icon {
+  animation: utils-x-download-pulse 900ms ease-in-out infinite;
 }
 
+.utils-x-download[data-state="ok"] .utils-x-download__btn {
+  color: var(--utils-x-ok);
+}
+
+.utils-x-download[data-state="warn"] .utils-x-download__btn {
+  color: var(--utils-x-warn);
+}
+
+.utils-x-download[data-state="error"] .utils-x-download__btn {
+  color: var(--utils-x-error);
+}
+
+@keyframes utils-x-download-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Readable feedback. The old sr-only status meant a failed download looked
+   identical to a silent success, so the result now shows as a short pill. */
 .utils-x-download__status {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
+  z-index: 10;
+  right: 50%;
+  bottom: calc(100% + 8px);
+  max-width: 15rem;
+  padding: 4px 9px;
+  border-radius: 8px;
+  color: rgb(255, 255, 255);
+  background: rgba(15, 20, 25, 0.94);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
   white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(50%, 4px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
 }
 
+.utils-x-download:not([data-state="idle"]) .utils-x-download__status:not(:empty) {
+  opacity: 1;
+  transform: translate(50%, 0);
+}
+
+.utils-x-download[data-state="ok"] .utils-x-download__status {
+  background: rgba(0, 122, 82, 0.96);
+}
+
+.utils-x-download[data-state="warn"] .utils-x-download__status {
+  background: rgba(122, 96, 0, 0.96);
+}
+
+.utils-x-download[data-state="error"] .utils-x-download__status {
+  background: rgba(140, 20, 28, 0.96);
+}
+
+/* Overlay button on media tiles. X puts its own media chips in a dark scrim, so
+   a bare white glyph both disappears on light photos and reads as foreign. */
 .utils-x-download--overlay {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 8px;
+  right: 8px;
   z-index: 6;
   flex: none;
+  min-height: 0;
   margin: 0;
 }
 
 .utils-x-download--overlay .utils-x-download__btn {
-  color: #f8fafc;
-  background: var(--utils-x-glass);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(14px);
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  color: rgb(255, 255, 255);
+  /* Deliberately no backdrop-filter: a media grid puts dozens of these over
+     images at once and blurring each one locks up the renderer. */
+  background: rgba(0, 0, 0, 0.65);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
 }
 
-.utils-x-download[data-state="ok"] .utils-x-download__btn {
-  color: #4ade80;
+.utils-x-download--overlay .utils-x-download__btn::before {
+  content: none;
 }
 
-.utils-x-download[data-state="error"] .utils-x-download__btn {
-  color: #fb7185;
+.utils-x-download--overlay .utils-x-download__icon {
+  width: 18px;
+  height: 18px;
+}
+
+.utils-x-download--overlay .utils-x-download__btn:hover,
+.utils-x-download--overlay .utils-x-download__btn:focus-visible {
+  color: rgb(255, 255, 255);
+  background: rgba(0, 0, 0, 0.82);
+  transform: scale(1.06);
+}
+
+.utils-x-download--overlay .utils-x-download__btn:focus-visible {
+  outline: 2px solid rgb(255, 255, 255);
+  outline-offset: 2px;
+}
+
+.utils-x-download--overlay[data-state="ok"] .utils-x-download__btn {
+  color: rgb(255, 255, 255);
+  background: var(--utils-x-ok);
+}
+
+.utils-x-download--overlay[data-state="warn"] .utils-x-download__btn {
+  color: rgb(15, 20, 25);
+  background: var(--utils-x-warn);
+}
+
+.utils-x-download--overlay[data-state="error"] .utils-x-download__btn {
+  color: rgb(255, 255, 255);
+  background: var(--utils-x-error);
+}
+
+/* The tile clips anything above it, so the pill hangs below the button. */
+.utils-x-download--overlay .utils-x-download__status {
+  top: calc(100% + 8px);
+  right: 0;
+  bottom: auto;
+  transform: translate(0, -4px);
+}
+
+.utils-x-download--overlay:not([data-state="idle"]) .utils-x-download__status:not(:empty) {
+  transform: translate(0, 0);
+}
+
+/* Photo viewer. Its cells are flex: 1 1 0 with a 22.5px white glyph, so an
+   auto-width cell would bunch up against share instead of sharing the row. */
+.utils-x-download.utils-x-download--viewer {
+  --utils-x-glyph: 22.5px;
+  --utils-x-row: 48px;
+  flex: 1 1 0%;
+}
+
+.utils-x-download--viewer .utils-x-download__btn {
+  color: rgb(255, 255, 255);
+}
+
+.utils-x-download--viewer .utils-x-download__btn::before {
+  inset: -10px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .utils-x-download__btn {
+  .utils-x-download__btn::before,
+  .utils-x-download__icon,
+  .utils-x-download__status {
     transition: none;
   }
 
-  .utils-x-download__btn:active {
+  .utils-x-download[data-state="loading"] .utils-x-download__icon {
+    animation: none;
+    opacity: 0.55;
+  }
+
+  .utils-x-download__btn:active .utils-x-download__icon,
+  .utils-x-download--overlay .utils-x-download__btn:hover {
     transform: none;
   }
 }

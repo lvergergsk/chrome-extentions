@@ -8,6 +8,7 @@ const {
   isMediaList,
   mergeMedia,
   syndicationUrl,
+  tweetStatusUrl,
 } = globalThis.UtilsXMedia;
 
 const cache = new Map();
@@ -66,6 +67,44 @@ const downloadTweet = async ({ tweetId, media }) => {
   return { ok: true, count };
 };
 
+const waitForTab = (tabId) =>
+  new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => finish(new Error("tab-timeout")), 15000);
+    const onUpdated = (updatedId, changeInfo) => {
+      if (updatedId === tabId && changeInfo.status === "complete") {
+        finish();
+      }
+    };
+    const finish = (error) => {
+      clearTimeout(timeout);
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      error ? reject(error) : resolve();
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+    chrome.tabs.get(tabId).then((tab) => {
+      if (tab.status === "complete") {
+        finish();
+      }
+    }, finish);
+  });
+
+const likeTweet = async (tweetId) => {
+  const url = tweetStatusUrl(tweetId);
+  if (!url) {
+    return { ok: false, error: "bad-id" };
+  }
+  const tab = await chrome.tabs.create({ url, active: false });
+  try {
+    await waitForTab(tab.id);
+    return await chrome.tabs.sendMessage(tab.id, {
+      type: "utils.x.like.current",
+      tweetId: String(tweetId),
+    });
+  } finally {
+    await chrome.tabs.remove(tab.id).catch(() => {});
+  }
+};
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "utils.reload") {
     const tabId = sender.tab?.id;
@@ -88,6 +127,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((error) => {
         sendResponse({ ok: false, count: 0, error: String(error?.message ?? error) });
       });
+    return true;
+  }
+  if (message?.type === "utils.x.like") {
+    likeTweet(message.tweetId)
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message ?? error) }));
     return true;
   }
   if (message?.type === "utils.sukebei.filterUnvisited") {
