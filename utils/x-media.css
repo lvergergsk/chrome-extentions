@@ -3,7 +3,6 @@
   --utils-x-accent: #38bdf8;
   --utils-x-hover: rgba(56, 189, 248, 0.16);
   --utils-x-focus: #7dd3fc;
-  --utils-x-glass: rgba(2, 6, 23, 0.82);
   position: relative;
   display: flex;
   /* Matches X's own bookmark/share cells so the button joins the row instead of
@@ -82,24 +81,25 @@
 .utils-x-download--overlay .utils-x-download__btn {
   width: 38px;
   height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  color: #f8fafc;
-  background: var(--utils-x-glass);
-  box-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(14px);
+  color: rgba(255, 255, 255, 0.92);
+  background: transparent;
 }
 
 .utils-x-download--overlay .utils-x-download__btn:hover,
 .utils-x-download--overlay .utils-x-download__btn:focus-visible {
   color: #ffffff;
-  background: rgba(2, 132, 199, 0.94);
+  background: transparent;
+  transform: scale(1.08);
+}
+
+.utils-x-download--overlay .utils-x-download__btn:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.92);
 }
 
 .utils-x-download--overlay .utils-x-download__icon {
   width: 18px;
   height: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
 }
 
 .utils-x-download--viewer .utils-x-download__icon {
@@ -116,9 +116,19 @@
   width: 44px;
   height: 44px;
   border: 0;
-  color: var(--utils-x-accent);
+  color: rgb(231, 233, 234);
   background: transparent;
   box-shadow: none;
+}
+
+.utils-x-download--viewer .utils-x-download__btn:hover,
+.utils-x-download--viewer .utils-x-download__btn:focus-visible {
+  color: #ffffff;
+  background: transparent;
+}
+
+.utils-x-download--viewer .utils-x-download__btn:focus-visible {
+  outline-color: rgb(231, 233, 234);
 }
 
 .utils-x-download[data-state="ok"] .utils-x-download__btn {
