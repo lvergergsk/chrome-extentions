@@ -6,6 +6,7 @@
 
 - `utils` - 个人工具箱。包含：
   - X/Twitter 帖子图片和视频一键下载（自动点赞）。
+  - pixiv 作品原图一键下载（自动点赞）。作品页大图和列表缩略图都有按钮，多图作品一次下齐；うごイラ（动图）暂不支持。
   - Sukebei (https://sukebei.nyaa.si/) 广告拦截（网络层拦截 + 页面桩注入 + 广告容器自动清理）。
   - ouo.io / ouo.press 广告拦截（挡住「I'm a human」的浮层、弹窗、广告脚本），验证完成后自动点继续。
   - orangepix.is 广告拦截（顶栏横幅、联盟图、/htsrc.js 弹窗、年龄确认层）。
@@ -26,6 +27,7 @@ npm run reload    # 已安装：请求 Chrome 重新加载 Utils
 1. 打开 `chrome://extensions`，打开开发者模式。
 2. 点击 **加载已解压的扩展程序**，选 `utils`。
 3. 打开 `x.com` 或 `twitter.com`。带图片或视频的帖子会在操作栏出现下载按钮。
+4. 打开 `www.pixiv.net`。作品页大图右上角和列表缩略图右上角会出现下载按钮。
 
 ## 以后打包
 

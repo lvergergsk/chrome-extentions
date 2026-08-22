@@ -1,4 +1,5 @@
 import "./x-media-core.js";
+import "./pixiv-media-core.js";
 import { filterUnvisited } from "./sukebei-open-unseen-bg.js";
 
 const {
@@ -10,6 +11,12 @@ const {
   syndicationUrl,
   tweetStatusUrl,
 } = globalThis.UtilsXMedia;
+
+const {
+  downloadFilename: pixivDownloadFilename,
+  dedupeUrls: pixivDedupeUrls,
+  isIllustId,
+} = globalThis.UtilsPixivMedia;
 
 const cache = new Map();
 
@@ -53,6 +60,36 @@ const downloadTweet = async ({ tweetId, media }) => {
       await chrome.downloads.download({
         url: item.url,
         filename: `utils-x/${downloadFilename(id, index, item.url)}`,
+        conflictAction: "uniquify",
+        saveAs: false,
+      });
+      count += 1;
+    } catch (error) {
+      lastError = String(error?.message ?? error);
+    }
+  }
+  if (count === 0) {
+    return { ok: false, count: 0, error: lastError || "empty" };
+  }
+  return { ok: true, count };
+};
+
+// i.pximg.net rejects any request without a pixiv Referer, and the downloads API
+// sends none. rules/pixiv-referer.json puts one back on the way out; without that
+// static rule every one of these downloads comes back 403.
+const downloadPixiv = async ({ illustId, urls }) => {
+  const id = isIllustId(illustId) ? String(illustId) : "pixiv";
+  const items = pixivDedupeUrls(Array.isArray(urls) ? urls : []);
+  if (items.length === 0) {
+    return { ok: false, count: 0, error: "empty" };
+  }
+  let count = 0;
+  let lastError = "";
+  for (const [index, url] of items.entries()) {
+    try {
+      await chrome.downloads.download({
+        url,
+        filename: `utils-pixiv/${pixivDownloadFilename(id, index, url)}`,
         conflictAction: "uniquify",
         saveAs: false,
       });
@@ -123,6 +160,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message?.type === "utils.x.download") {
     downloadTweet(message)
+      .then(sendResponse)
+      .catch((error) => {
+        sendResponse({ ok: false, count: 0, error: String(error?.message ?? error) });
+      });
+    return true;
+  }
+  if (message?.type === "utils.pixiv.download") {
+    downloadPixiv(message)
       .then(sendResponse)
       .catch((error) => {
         sendResponse({ ok: false, count: 0, error: String(error?.message ?? error) });
