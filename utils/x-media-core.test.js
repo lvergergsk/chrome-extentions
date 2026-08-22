@@ -71,6 +71,15 @@ test("isAllowedMediaUrl only allows X media hosts over https", () => {
   assert.equal(isAllowedMediaUrl("blob:https://x.com/123"), false);
 });
 
+test("URL and media helpers fail closed for malformed input", () => {
+  assert.equal(toOriginalImageUrl("not-a-url"), null);
+  assert.equal(isAllowedMediaUrl("not-a-url"), false);
+  assert.equal(downloadFilename(null, 0, "not-a-url"), "x-tweet-1.jpg");
+  assert.equal(pickBestMp4(), null);
+  assert.equal(extractTweetId(), null);
+  assert.deepEqual(mergeMedia(), []);
+});
+
 test("pickBestMp4 selects the highest-bitrate mp4 and skips HLS", () => {
   const best = pickBestMp4([
     { content_type: "application/x-mpegURL", url: "https://video.twimg.com/ext_tw_video/1/pu/pl/a.m3u8" },
@@ -485,4 +494,16 @@ test("findMediaDialog and findActionHost locate the photo viewer action bar", ()
 
   assert.equal(findMediaDialog(root), dialog);
   assert.equal(findActionHost(dialog), actionGroup);
+});
+
+test("DOM helpers tolerate missing X surfaces", () => {
+  assert.deepEqual(collectDomMedia(null), []);
+  assert.equal(firstOwnMatch(null, "button"), null);
+  assert.equal(tweetHasVisibleMedia(null), false);
+  assert.equal(findActionHost(null), null);
+  assert.equal(findMediaHost(null), null);
+  assert.equal(findLikeButton(null), null);
+  assert.deepEqual(findMediaGridLinks(null), []);
+  assert.equal(findMediaDialog({}), null);
+  assert.equal(attachDownloadButton(null, {}), false);
 });
