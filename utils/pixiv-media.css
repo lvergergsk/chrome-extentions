@@ -115,6 +115,48 @@
   }
 }
 
+/* "Saved" badge. pixiv's own thumbnail heart shows what was already bookmarked
+   when the page loaded, but it cannot be driven from an extension — it ignores
+   every programmatic event — so this covers the gap: works bookmarked during this
+   page session. It is deliberately pixiv's own heart in pixiv's own pink so the
+   two read as the same state. */
+.utils-pixiv-download__saved {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  z-index: 9;
+  display: none;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 9999px;
+  color: rgb(255, 64, 96);
+  background: rgb(255, 255, 255);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.utils-pixiv-download[data-saved="true"] .utils-pixiv-download__saved {
+  display: grid;
+}
+
+/* The artwork page needs no badge: its own heart turns pink there. */
+.utils-pixiv-download[data-utils-pixiv-download="main"] .utils-pixiv-download__saved {
+  display: none;
+}
+
+.utils-pixiv-download__saved-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+}
+
+/* A saved tile keeps its button visible so the badge never hides behind a
+   hover-only control. */
+.utils-pixiv-download[data-saved="true"] .utils-pixiv-download__btn {
+  opacity: 1;
+}
+
 /* Readable feedback: a silent success and a failed download must not look the
    same. The pill hangs below the button because a tile clips nothing above it but
    the row above is another tile. */

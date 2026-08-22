@@ -96,6 +96,19 @@
     return { ok: false, error: "bookmark-unconfirmed" };
   };
 
+  // pixiv's thumbnail heart already shows what was bookmarked before the page
+  // loaded, and it cannot be driven from here, so this only has to cover the gap:
+  // works saved during this page session. The flag lives on our own element, which
+  // survives nothing — the feed re-renders tiles constantly — so the ids are kept
+  // here and re-applied whenever a button is injected.
+  const savedThisSession = new Set();
+
+  const markSaved = (root, illustId) => {
+    if (savedThisSession.has(String(illustId))) {
+      root.dataset.saved = "true";
+    }
+  };
+
   const bookmarkIllust = async (illustId, root) => {
     // The artwork page's heart answers a click, and pixiv then updates its own UI.
     // A tile's heart answers nothing — not a synthetic click, not a full pointer
@@ -167,6 +180,10 @@
     const bookmark = resolved.bookmarked
       ? { ok: true, state: "already-bookmarked" }
       : await bookmarkIllust(illustId, root);
+    if (bookmark.ok) {
+      savedThisSession.add(String(illustId));
+      markSaved(root, illustId);
+    }
     if (runIds.get(root) !== run) {
       return;
     }
@@ -191,6 +208,23 @@
     return svg;
   };
 
+  // pixiv's own heart, so the badge reads as the same thing the site draws.
+  const HEART_PATH =
+    "M21 5.5c3.87 0 7 3.13 7 7 0 6.5-9.5 12.5-12 14-2.5-1.5-12-7.5-12-14 0-3.87 3.13-7 7-7 2.09 0 3.97.92 5.25 2.37" +
+    "C17.53 6.42 19.41 5.5 21 5.5z";
+
+  const heartIcon = () => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 32 32");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.classList.add("utils-pixiv-download__saved-icon");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", HEART_PATH);
+    svg.append(path);
+    return svg;
+  };
+
   const BUTTON_LABEL = "下载原图并收藏作品";
 
   const createButton = (illustId) => {
@@ -205,6 +239,12 @@
     button.setAttribute("aria-label", BUTTON_LABEL);
     button.title = BUTTON_LABEL;
     button.append(svgIcon());
+
+    // A persistent badge, unlike the status pill, which clears after a few seconds.
+    const saved = document.createElement("span");
+    saved.className = "utils-pixiv-download__saved";
+    saved.title = "已收藏";
+    saved.append(heartIcon());
 
     const status = document.createElement("span");
     status.className = "utils-pixiv-download__status";
@@ -227,7 +267,7 @@
       }
     });
 
-    root.append(button, status);
+    root.append(button, saved, status);
     return root;
   };
 
@@ -280,6 +320,7 @@
     }
     const root = createButton(illustId);
     root.setAttribute(ROOT_ATTR, variant);
+    markSaved(root, illustId);
     pinHost(host);
     host.append(root);
     if (variant === "main") {
