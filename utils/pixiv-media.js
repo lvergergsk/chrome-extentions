@@ -2,8 +2,17 @@
 // file in one content_scripts entry shares a single global lexical scope, so a
 // top-level name here would collide with pixiv-media-core.js and kill the whole file.
 (() => {
-  const { domOriginalUrls, illustIdFrom, isIllustId, mainIllustHosts, thumbnailHost, thumbnailLinks } =
-    globalThis.UtilsPixivMedia;
+  const {
+    domOriginalUrls,
+    findMainBookmarkButton,
+    findTileBookmarkButton,
+    illustIdFrom,
+    isBookmarkOn,
+    isIllustId,
+    mainIllustHosts,
+    thumbnailHost,
+    thumbnailLinks,
+  } = globalThis.UtilsPixivMedia;
 
   const SOURCE = "utils-pixiv-media";
   const ROOT_ATTR = "data-utils-pixiv-download";
@@ -53,6 +62,65 @@
     if (kind === "ok" || kind === "warn" || kind === "error") {
       statusTimers.set(root, window.setTimeout(() => setStatus(root, "", "idle"), 3600));
     }
+  };
+
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const heartIsOn = (button) => isBookmarkOn(button, (svg) => getComputedStyle(svg).color);
+
+  const BOOKMARK_FLIP_MS = 4000;
+
+  // Clicking pixiv's own heart is what makes pixiv's UI catch up. The API write
+  // behind our back is correct on the server but leaves the heart grey until the
+  // page reloads, which is what this replaces.
+  const bookmarkThroughPixiv = async (find) => {
+    const button = find();
+    if (!button) {
+      // No heart on this surface; the caller falls back to the API.
+      return null;
+    }
+    if (heartIsOn(button)) {
+      return { ok: true, state: "already-bookmarked" };
+    }
+    button.click();
+    const deadline = Date.now() + BOOKMARK_FLIP_MS;
+    while (Date.now() < deadline) {
+      await sleep(150);
+      const current = find();
+      // The artwork page answers by dropping gtm-main-bookmark, so a vanished
+      // button means saved; a tile keeps its button and turns the heart pink.
+      if (!current || heartIsOn(current)) {
+        return { ok: true, state: "bookmarked" };
+      }
+    }
+    return { ok: false, error: "bookmark-unconfirmed" };
+  };
+
+  // pixiv's thumbnail heart already shows what was bookmarked before the page
+  // loaded, and it cannot be driven from here, so this only has to cover the gap:
+  // works saved during this page session. The flag lives on our own element, which
+  // survives nothing — the feed re-renders tiles constantly — so the ids are kept
+  // here and re-applied whenever a button is injected.
+  const savedThisSession = new Set();
+
+  const markSaved = (root, illustId) => {
+    if (savedThisSession.has(String(illustId))) {
+      root.dataset.saved = "true";
+    }
+  };
+
+  const bookmarkIllust = async (illustId, root) => {
+    // The artwork page's heart answers a click, and pixiv then updates its own UI.
+    // A tile's heart answers nothing — not a synthetic click, not a full pointer
+    // sequence, not even a real one — so a tile bookmark goes through the API and
+    // pixiv's heart there stays grey until the page reloads.
+    if (root.getAttribute(ROOT_ATTR) === "main") {
+      const clicked = await bookmarkThroughPixiv(() => findMainBookmarkButton(document));
+      if (clicked) {
+        return clicked;
+      }
+    }
+    return askIllust("bookmark", illustId);
   };
 
   const bookmarkLabel = (bookmark) => {
@@ -111,7 +179,11 @@
     // Re-adding an existing bookmark would wipe the tags and comment already on it.
     const bookmark = resolved.bookmarked
       ? { ok: true, state: "already-bookmarked" }
-      : await askIllust("bookmark", illustId);
+      : await bookmarkIllust(illustId, root);
+    if (bookmark.ok) {
+      savedThisSession.add(String(illustId));
+      markSaved(root, illustId);
+    }
     if (runIds.get(root) !== run) {
       return;
     }
@@ -136,6 +208,23 @@
     return svg;
   };
 
+  // pixiv's own heart, so the badge reads as the same thing the site draws.
+  const HEART_PATH =
+    "M21 5.5c3.87 0 7 3.13 7 7 0 6.5-9.5 12.5-12 14-2.5-1.5-12-7.5-12-14 0-3.87 3.13-7 7-7 2.09 0 3.97.92 5.25 2.37" +
+    "C17.53 6.42 19.41 5.5 21 5.5z";
+
+  const heartIcon = () => {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 32 32");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.classList.add("utils-pixiv-download__saved-icon");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", HEART_PATH);
+    svg.append(path);
+    return svg;
+  };
+
   const BUTTON_LABEL = "下载原图并收藏作品";
 
   const createButton = (illustId) => {
@@ -150,6 +239,12 @@
     button.setAttribute("aria-label", BUTTON_LABEL);
     button.title = BUTTON_LABEL;
     button.append(svgIcon());
+
+    // A persistent badge, unlike the status pill, which clears after a few seconds.
+    const saved = document.createElement("span");
+    saved.className = "utils-pixiv-download__saved";
+    saved.title = "已收藏";
+    saved.append(heartIcon());
 
     const status = document.createElement("span");
     status.className = "utils-pixiv-download__status";
@@ -172,7 +267,7 @@
       }
     });
 
-    root.append(button, status);
+    root.append(button, saved, status);
     return root;
   };
 
@@ -225,6 +320,7 @@
     }
     const root = createButton(illustId);
     root.setAttribute(ROOT_ATTR, variant);
+    markSaved(root, illustId);
     pinHost(host);
     host.append(root);
     if (variant === "main") {

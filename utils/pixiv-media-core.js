@@ -108,6 +108,56 @@
     return illust?.bookmarkData != null;
   }
 
+  // pixiv's own heart is the only thing that also updates pixiv's UI: a bare API
+  // write leaves the React app believing the work is still unsaved, so the heart
+  // stays grey until the page is reloaded.
+  const BOOKMARK_ON_COLOR = "rgb(255, 64, 96)";
+  const MAIN_BOOKMARK = ".gtm-main-bookmark";
+  const HEART_SVG = 'svg[viewBox="0 0 32 32"]';
+
+  // The class is present only while the work is *not* bookmarked, exactly the way
+  // X swaps its `like` testid for `unlike`. That is what keeps this from ever
+  // clicking the heart of an already-saved work and removing the bookmark.
+  function findMainBookmarkButton(root) {
+    const marked = root && typeof root.querySelector === "function" ? root.querySelector(MAIN_BOOKMARK) : null;
+    if (!marked) {
+      return null;
+    }
+    return typeof marked.closest === "function" ? marked.closest("button") ?? marked : marked;
+  }
+
+  // A tile keeps the same hashed class in both states, so the heart is found by
+  // shape and read by colour.
+  function findTileBookmarkButton(host, exclude) {
+    if (!host || typeof host.querySelectorAll !== "function") {
+      return null;
+    }
+    return (
+      [...host.querySelectorAll("button")].find(
+        (button) => button !== exclude && !button.contains?.(exclude) && button.querySelector?.(HEART_SVG),
+      ) ?? null
+    );
+  }
+
+  function heartSvgOf(button) {
+    return button && typeof button.querySelector === "function" ? button.querySelector(HEART_SVG) : null;
+  }
+
+  function isBookmarkOn(button, colorOf) {
+    const svg = heartSvgOf(button);
+    if (!svg || typeof colorOf !== "function") {
+      return false;
+    }
+    return colorOf(svg) === BOOKMARK_ON_COLOR;
+  }
+
+  // A tile's heart cannot be driven from here at all. Measured on the live site: it
+  // ignores a synthetic click and a full pointer sequence, ignores a real trusted
+  // click, and its colour survives an inline `!important` override and even a class
+  // swap to pixiv's own `text-[#ff4060]`. Only the artwork page's heart responds,
+  // so a tile bookmark is written through the API and pixiv's heart there stays
+  // grey until the page reloads.
+
   function bookmarkPayload(illustId, restrict = BOOKMARK_RESTRICT_PUBLIC) {
     return {
       illust_id: String(illustId),
@@ -218,9 +268,14 @@
 
   globalThis.UtilsPixivMedia = {
     BOOKMARK_ENDPOINT,
+    BOOKMARK_ON_COLOR,
     BOOKMARK_RESTRICT_PUBLIC,
     bookmarkPayload,
     csrfToken,
+    findMainBookmarkButton,
+    findTileBookmarkButton,
+    heartSvgOf,
+    isBookmarkOn,
     csrfTokenFromLegacyMeta,
     csrfTokenFromNextData,
     dedupeUrls,

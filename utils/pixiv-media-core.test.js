@@ -4,8 +4,12 @@ import "./pixiv-media-core.js";
 
 const {
   BOOKMARK_ENDPOINT,
+  BOOKMARK_ON_COLOR,
   bookmarkPayload,
   csrfToken,
+  findMainBookmarkButton,
+  findTileBookmarkButton,
+  isBookmarkOn,
   csrfTokenFromLegacyMeta,
   csrfTokenFromNextData,
   dedupeUrls,
@@ -108,6 +112,35 @@ test("bookmarkPayload posts a public bookmark and never invents tags or a commen
   });
   assert.equal(bookmarkPayload("1", 1).restrict, 1);
   assert.equal(bookmarkPayload("1", "nonsense").restrict, 0);
+});
+
+test("findMainBookmarkButton only answers while the work is still unsaved", () => {
+  const button = { closest: (selector) => (selector === "button" ? button : null) };
+  assert.equal(findMainBookmarkButton(root({ ".gtm-main-bookmark": [button] })), button);
+  // pixiv drops the class once the work is bookmarked, which is what stops the
+  // click path from ever removing an existing bookmark.
+  assert.equal(findMainBookmarkButton(root({})), null);
+  assert.equal(findMainBookmarkButton(null), null);
+});
+
+test("findTileBookmarkButton picks the heart and never our own button", () => {
+  const ours = { querySelector: () => null, contains: () => false };
+  const heart = { querySelector: (selector) => (selector.includes("32") ? {} : null), contains: () => false };
+  const plain = { querySelector: () => null, contains: () => false };
+  const host = { querySelectorAll: () => [ours, plain, heart] };
+  assert.equal(findTileBookmarkButton(host, ours), heart);
+  assert.equal(findTileBookmarkButton({ querySelectorAll: () => [ours] }, ours), null);
+  assert.equal(findTileBookmarkButton(null, ours), null);
+});
+
+test("isBookmarkOn reads pixiv's saved-heart colour", () => {
+  const svg = {};
+  const button = { querySelector: (selector) => (selector.includes("32") ? svg : null) };
+  assert.equal(isBookmarkOn(button, () => BOOKMARK_ON_COLOR), true);
+  assert.equal(isBookmarkOn(button, () => "rgb(31, 31, 31)"), false);
+  assert.equal(isBookmarkOn(button, () => "rgb(245, 245, 245)"), false);
+  assert.equal(isBookmarkOn({ querySelector: () => null }, () => BOOKMARK_ON_COLOR), false);
+  assert.equal(isBookmarkOn(null, () => BOOKMARK_ON_COLOR), false);
 });
 
 test("mapLimited keeps order, covers every item and never exceeds the limit", async () => {
