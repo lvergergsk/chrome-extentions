@@ -9,6 +9,8 @@ const {
   attachDownloadButton,
   findActionHost,
   findLikeButton,
+  findMediaDialog,
+  findMediaGridLinks,
   findMediaHost,
   firstOwnMatch,
   harvestTweetMedia,
@@ -433,4 +435,54 @@ test("findMediaHost returns this article's video player", () => {
     '[data-testid="videoPlayer"]': [player],
   }).querySelectorAll;
   assert.equal(findMediaHost(article), player);
+});
+
+test("findMediaGridLinks returns standalone photo tiles only", () => {
+  const article = {};
+  const dialog = {};
+  const photo = { src: "https://pbs.twimg.com/media/GridPhoto?format=jpg&name=small" };
+  const tile = {
+    querySelector: () => photo,
+    closest: () => null,
+  };
+  const articleTile = {
+    querySelector: () => photo,
+    closest: (selector) => (selector === "article" ? article : null),
+  };
+  const dialogTile = {
+    querySelector: () => photo,
+    closest: (selector) => (selector === '[role="dialog"]' ? dialog : null),
+  };
+  const root = {
+    querySelectorAll: () => [tile, articleTile, dialogTile, { querySelector: () => null, closest: () => null }],
+  };
+
+  assert.deepEqual(findMediaGridLinks(root), [tile]);
+});
+
+test("findMediaDialog and findActionHost locate the photo viewer action bar", () => {
+  const dialog = {};
+  const actionGroup = {
+    parentElement: dialog,
+    querySelector(selector) {
+      return /reply|retweet|like/.test(selector) ? {} : null;
+    },
+    querySelectorAll: () => [{}, {}, {}],
+    closest: () => null,
+  };
+  dialog.contains = (node) => node === actionGroup;
+  dialog.querySelectorAll = (selector) => {
+    if (selector.includes("reply") || selector.includes("retweet") || selector.includes("like")) {
+      return [{ parentElement: actionGroup, closest: () => null }];
+    }
+    if (selector === '[role="group"]') {
+      return [actionGroup];
+    }
+    return [];
+  };
+  const swipe = { closest: (selector) => (selector === '[role="dialog"]' ? dialog : null) };
+  const root = { querySelector: () => swipe };
+
+  assert.equal(findMediaDialog(root), dialog);
+  assert.equal(findActionHost(dialog), actionGroup);
 });
