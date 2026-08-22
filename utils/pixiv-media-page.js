@@ -85,26 +85,28 @@
     return { ok: true, state: "bookmarked" };
   };
 
-  const handle = (type, illustId) => {
-    if (type === "resolve") {
-      return resolveIllust(illustId);
+  const handle = (message) => {
+    if (message.type === "resolve") {
+      return resolveIllust(message.illustId);
     }
-    if (type === "bookmark") {
-      return bookmarkIllust(illustId);
+    if (message.type === "bookmark") {
+      return bookmarkIllust(message.illustId);
     }
     return Promise.resolve({ ok: false, error: "unknown-request" });
   };
+
+  const HANDLED = new Set(["resolve", "bookmark"]);
 
   window.addEventListener("message", (event) => {
     if (event.origin !== window.location.origin || event.source !== window) {
       return;
     }
     const data = event.data;
-    if (!data || data.source !== SOURCE || (data.type !== "resolve" && data.type !== "bookmark")) {
+    if (!data || data.source !== SOURCE || !HANDLED.has(data.type)) {
       return;
     }
     // Always answer: the isolated side would otherwise wait for its full timeout.
-    handle(data.type, data.illustId)
+    handle(data)
       .catch((error) => ({ ok: false, error: String(error?.message ?? error) }))
       .then((result) => post({ type: "reply", requestId: data.requestId, result }));
   });

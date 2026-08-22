@@ -21,9 +21,9 @@
         "path": "rules/adblock.json"
       },
       {
-        "id": "pixiv_referer",
+        "id": "pixiv_media",
         "enabled": true,
-        "path": "rules/pixiv-referer.json"
+        "path": "rules/pixiv-media.json"
       }
     ]
   },

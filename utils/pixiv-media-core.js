@@ -84,6 +84,24 @@
     return Number(illust?.illustType) === UGOIRA_TYPE;
   }
 
+  // A manga can run to dozens of pages, and firing every request at once would
+  // hammer pixiv and stall the tab.
+  async function mapLimited(items, limit, worker) {
+    const list = Array.isArray(items) ? items : [];
+    const results = new Array(list.length);
+    const width = Math.max(1, Math.min(Number(limit) || 1, list.length));
+    let cursor = 0;
+    const runner = async () => {
+      while (cursor < list.length) {
+        const index = cursor;
+        cursor += 1;
+        results[index] = await worker(list[index], index);
+      }
+    };
+    await Promise.all(Array.from({ length: width }, runner));
+    return results;
+  }
+
   // bookmarkData is an object once the work is bookmarked and null while it is not,
   // and it already rides along in the list responses pixiv draws its own heart from.
   function isBookmarked(illust) {
@@ -216,6 +234,7 @@
     isPixivImageUrl,
     isUgoira,
     mainIllustHosts,
+    mapLimited,
     originalUrls,
     pagesEndpoint,
     thumbnailHost,

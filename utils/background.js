@@ -16,7 +16,11 @@ const {
   downloadFilename: pixivDownloadFilename,
   dedupeUrls: pixivDedupeUrls,
   isIllustId,
+  mapLimited,
 } = globalThis.UtilsPixivMedia;
+
+// A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
+const PIXIV_FETCH_CONCURRENCY = 3;
 
 const cache = new Map();
 
@@ -74,34 +78,120 @@ const downloadTweet = async ({ tweetId, media }) => {
   return { ok: true, count };
 };
 
-// i.pximg.net rejects any request without a pixiv Referer, and the downloads API
-// sends none. rules/pixiv-referer.json puts one back on the way out; without that
-// static rule every one of these downloads comes back 403.
+// chrome.downloads.download resolves as soon as the transfer is queued, so a 403
+// from i.pximg.net still looks like a started download. Wait for the item to reach
+// a terminal state and report what actually happened.
+const DOWNLOAD_SETTLE_MS = 25000;
+
+const settleDownload = (downloadId) =>
+  new Promise((resolve) => {
+    const finish = (result) => {
+      clearTimeout(timer);
+      chrome.downloads.onChanged.removeListener(onChanged);
+      resolve(result);
+    };
+    const stateOf = (state, error) => {
+      if (state === "complete") {
+        return { ok: true };
+      }
+      if (state === "interrupted") {
+        return { ok: false, error: error || "interrupted" };
+      }
+      return null;
+    };
+    const onChanged = (delta) => {
+      if (delta.id !== downloadId) {
+        return;
+      }
+      const result = stateOf(delta.state?.current, delta.error?.current);
+      if (result) {
+        finish(result);
+      }
+    };
+    chrome.downloads.onChanged.addListener(onChanged);
+    // A big illustration on a slow link is still fine: a timeout means "still
+    // running", never "failed".
+    const timer = setTimeout(() => finish({ ok: true, pending: true }), DOWNLOAD_SETTLE_MS);
+    // A download that already finished before the listener attached never fires
+    // onChanged at all.
+    chrome.downloads
+      .search({ id: downloadId })
+      .then(([item]) => {
+        const result = item ? stateOf(item.state, item.error) : null;
+        if (result) {
+          finish(result);
+        }
+      })
+      .catch(() => {});
+  });
+
+// Service workers do not expose URL.createObjectURL, so a data URL is the only way
+// to hand fetched bytes to the downloads API. Building it here keeps the work off
+// the renderer, where a 20 MB illustration froze the tab.
+const toDataUrl = async (blob) => {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const chunk = 0x8000;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunk));
+  }
+  return `data:${blob.type || "application/octet-stream"};base64,${btoa(binary)}`;
+};
+
+const downloadSource = async (blob) => {
+  try {
+    return { url: URL.createObjectURL(blob), revoke: true };
+  } catch {
+    return { url: await toDataUrl(blob), revoke: false };
+  }
+};
+
+// i.pximg.net answers 403 without a pixiv Referer. The downloads API cannot send
+// one (Referer is an unsafe header there) and Chrome does not apply a
+// declarativeNetRequest rule to a downloads-API request either — but it does apply
+// one to this fetch, so the worker pulls the bytes itself and downloads those.
 const downloadPixiv = async ({ illustId, urls }) => {
   const id = isIllustId(illustId) ? String(illustId) : "pixiv";
   const items = pixivDedupeUrls(Array.isArray(urls) ? urls : []);
   if (items.length === 0) {
     return { ok: false, count: 0, error: "empty" };
   }
-  let count = 0;
-  let lastError = "";
-  for (const [index, url] of items.entries()) {
+  const results = await mapLimited(items, PIXIV_FETCH_CONCURRENCY, async (url, index) => {
+    let source;
     try {
-      await chrome.downloads.download({
-        url,
+      const response = await fetch(url, { credentials: "omit" });
+      if (!response.ok) {
+        return { ok: false, error: `http-${response.status}` };
+      }
+      source = await downloadSource(await response.blob());
+    } catch (error) {
+      return { ok: false, error: String(error?.message ?? error) };
+    }
+    let result;
+    try {
+      const downloadId = await chrome.downloads.download({
+        url: source.url,
         filename: `utils-pixiv/${pixivDownloadFilename(id, index, url)}`,
         conflictAction: "uniquify",
         saveAs: false,
       });
-      count += 1;
+      result = await settleDownload(downloadId);
     } catch (error) {
-      lastError = String(error?.message ?? error);
+      result = { ok: false, error: String(error?.message ?? error) };
     }
-  }
+    // Never revoke while the transfer is still running: settleDownload reports
+    // `pending` when it gave up waiting, not when the download failed.
+    if (source.revoke && !result.pending) {
+      URL.revokeObjectURL(source.url);
+    }
+    return result;
+  });
+  const count = results.filter((result) => result.ok).length;
+  const error = results.find((result) => !result.ok)?.error ?? "";
   if (count === 0) {
-    return { ok: false, count: 0, error: lastError || "empty" };
+    return { ok: false, count: 0, error: error || "empty" };
   }
-  return { ok: true, count };
+  return { ok: true, count, failed: results.length - count, error };
 };
 
 const waitForTab = (tabId) =>

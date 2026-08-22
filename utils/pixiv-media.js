@@ -11,12 +11,8 @@
   // early would silently fall back to the DOM and download nothing.
   const PAGE_TIMEOUT_MS = 10000;
 
-  const askPage = (type, illustId) =>
+  const askPage = (type, payload, timeoutMs = PAGE_TIMEOUT_MS) =>
     new Promise((resolve) => {
-      if (!isIllustId(illustId)) {
-        resolve({ ok: false, error: "bad-id" });
-        return;
-      }
       const requestId = crypto.randomUUID();
       const finish = (result) => {
         window.removeEventListener("message", onMessage);
@@ -33,9 +29,12 @@
         }
       };
       window.addEventListener("message", onMessage);
-      window.postMessage({ source: SOURCE, type, requestId, illustId }, window.location.origin);
-      const timer = window.setTimeout(() => finish({ ok: false, error: "timeout" }), PAGE_TIMEOUT_MS);
+      window.postMessage({ source: SOURCE, type, requestId, ...payload }, window.location.origin);
+      const timer = window.setTimeout(() => finish({ ok: false, error: "timeout" }), timeoutMs);
     });
+
+  const askIllust = (type, illustId) =>
+    isIllustId(illustId) ? askPage(type, { illustId }) : Promise.resolve({ ok: false, error: "bad-id" });
 
   const statusTimers = new WeakMap();
   const runIds = new WeakMap();
@@ -68,7 +67,7 @@
     runIds.set(root, run);
     setStatus(root, "正在下载", "loading");
 
-    const resolved = await askPage("resolve", illustId);
+    const resolved = await askIllust("resolve", illustId);
     if (!resolved.ok && resolved.error === "ugoira") {
       setStatus(root, "うごイラ（动图）暂不支持", "warn");
       return;
@@ -93,24 +92,30 @@
       return;
     }
     if (!response?.ok || !(response.count > 0)) {
-      setStatus(root, response?.error === "empty" ? "没有找到可下载的图片" : "下载失败", "error");
+      if (response?.error === "empty") {
+        setStatus(root, "没有找到可下载的图片", "error");
+      } else {
+        // The real reason matters here: SERVER_FORBIDDEN means the Referer rule
+        // stopped working, which looks nothing like a full disk.
+        setStatus(root, `下载失败${response?.error ? `：${response.error}` : ""}`, "error");
+      }
       return;
     }
 
-    // Report the download the moment it starts. The bookmark is a second round trip
-    // through the page and must never hold the button in its disabled loading
-    // state, nor turn a finished download into a reported failure.
-    const started = `已开始下载 ${response.count} 张`;
-    setStatus(root, started, "ok");
+    // Report the download before the bookmark: that is a second round trip through
+    // the page and must never turn a finished download into a reported failure.
+    const failed = response.failed ?? 0;
+    const started = failed > 0 ? `已下载 ${response.count} 张，${failed} 张失败` : `已下载 ${response.count} 张`;
+    setStatus(root, started, failed > 0 ? "warn" : "ok");
 
     // Re-adding an existing bookmark would wipe the tags and comment already on it.
     const bookmark = resolved.bookmarked
       ? { ok: true, state: "already-bookmarked" }
-      : await askPage("bookmark", illustId);
+      : await askIllust("bookmark", illustId);
     if (runIds.get(root) !== run) {
       return;
     }
-    setStatus(root, `${started}${bookmarkLabel(bookmark)}`, bookmark.ok ? "ok" : "warn");
+    setStatus(root, `${started}${bookmarkLabel(bookmark)}`, bookmark.ok && failed === 0 ? "ok" : "warn");
   };
 
   // Same glyph as the X button so the two surfaces read as one feature: a filled

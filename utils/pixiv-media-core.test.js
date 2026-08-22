@@ -19,6 +19,7 @@ const {
   isPixivImageUrl,
   isUgoira,
   mainIllustHosts,
+  mapLimited,
   originalUrls,
   pagesEndpoint,
   thumbnailHost,
@@ -107,6 +108,27 @@ test("bookmarkPayload posts a public bookmark and never invents tags or a commen
   });
   assert.equal(bookmarkPayload("1", 1).restrict, 1);
   assert.equal(bookmarkPayload("1", "nonsense").restrict, 0);
+});
+
+test("mapLimited keeps order, covers every item and never exceeds the limit", async () => {
+  const items = [1, 2, 3, 4, 5, 6, 7];
+  let running = 0;
+  let peak = 0;
+  const results = await mapLimited(items, 3, async (item, index) => {
+    running += 1;
+    peak = Math.max(peak, running);
+    await new Promise((resolve) => setTimeout(resolve, item % 3));
+    running -= 1;
+    return `${index}:${item}`;
+  });
+  assert.deepEqual(results, ["0:1", "1:2", "2:3", "3:4", "4:5", "5:6", "6:7"]);
+  assert.ok(peak <= 3, `peak concurrency ${peak} exceeded the limit`);
+});
+
+test("mapLimited tolerates an empty list and a nonsense limit", async () => {
+  assert.deepEqual(await mapLimited([], 3, async () => "x"), []);
+  assert.deepEqual(await mapLimited(null, 3, async () => "x"), []);
+  assert.deepEqual(await mapLimited([1, 2], 0, async (item) => item * 2), [2, 4]);
 });
 
 test("isUgoira only matches illustType 2", () => {
