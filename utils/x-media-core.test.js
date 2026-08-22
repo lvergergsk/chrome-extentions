@@ -469,6 +469,37 @@ test("findMediaHost returns this article's video player", () => {
   assert.equal(findMediaHost(article), player);
 });
 
+test("findMediaHost covers every photo of a multi-photo tweet", () => {
+  const article = {};
+  const wrapper = {};
+  const tileA = { closest: () => article, parentElement: wrapper };
+  const tileB = { closest: () => article };
+  wrapper.parentElement = article;
+  wrapper.querySelector = () => null;
+  wrapper.contains = (node) => node === tileA || node === tileB;
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="tweetPhoto"]': [tileA, tileB],
+  }).querySelectorAll;
+
+  assert.equal(findMediaHost(article), wrapper);
+});
+
+test("findMediaHost stops before a wrapper that also holds the tweet text", () => {
+  const article = {};
+  const wrapper = {
+    parentElement: article,
+    querySelector: (selector) => (selector.includes("tweetText") ? {} : null),
+    contains: () => true,
+  };
+  const tileA = { closest: () => article, parentElement: wrapper };
+  const tileB = { closest: () => article };
+  article.querySelectorAll = articleWithSelectorHits({
+    '[data-testid="tweetPhoto"]': [tileA, tileB],
+  }).querySelectorAll;
+
+  assert.equal(findMediaHost(article), tileA);
+});
+
 test("findMediaGridLinks returns standalone photo tiles only", () => {
   const article = {};
   const dialog = {};

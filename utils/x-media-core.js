@@ -286,11 +286,15 @@
     return false;
   }
 
-  function firstOwnMatch(scope, selector) {
+  function ownMatches(scope, selector) {
     if (!scope || typeof scope.querySelectorAll !== "function" || typeof selector !== "string") {
-      return null;
+      return [];
     }
-    return [...scope.querySelectorAll(selector)].find((node) => belongsToScope(node, scope)) ?? null;
+    return [...scope.querySelectorAll(selector)].filter((node) => belongsToScope(node, scope));
+  }
+
+  function firstOwnMatch(scope, selector) {
+    return ownMatches(scope, selector)[0] ?? null;
   }
 
   function collectDomMedia(scope) {
@@ -420,7 +424,23 @@
   }
 
   function findMediaHost(article) {
-    return firstOwnMatch(article, MEDIA_HOSTS);
+    const tiles = ownMatches(article, MEDIA_HOSTS);
+    const first = tiles[0] ?? null;
+    if (tiles.length < 2) {
+      return first;
+    }
+    // A 2- or 4-photo tweet renders one media host per photo, so pinning the
+    // button to the first one leaves the other tiles bare. Walk up to the
+    // smallest wrapper that covers every tile instead, stopping short of the
+    // node that also holds the tweet text.
+    let node = first.parentElement;
+    for (let depth = 0; depth < 6 && node && node !== article; depth += 1) {
+      if (!node.querySelector?.('[data-testid="tweetText"]') && tiles.every((tile) => node.contains?.(tile))) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return first;
   }
 
   function findMediaGridLinks(root) {
