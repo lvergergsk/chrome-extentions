@@ -80,31 +80,53 @@
     }
   };
 
-  // X flips the heart optimistically and rolls it back when the write fails, so
-  // a click alone proves nothing. Already-liked posts expose no "like" button,
-  // which is what keeps this from ever un-liking anything.
-  const likeInPage = async (scope) => {
-    if (findUnlikeButton(scope)) {
+  // X flips the heart the moment it is clicked and only puts the "like" button
+  // back once the write is rejected, so the first flip proves nothing. Watch it
+  // for a while and require it to still be flipped at the end.
+  const LIKE_FLIP_MS = 3000;
+  const LIKE_SETTLE_MS = 2000;
+
+  const likeSettled = async (find) => {
+    const deadline = Date.now() + LIKE_SETTLE_MS;
+    while (Date.now() < deadline) {
+      await sleep(150);
+      const scope = find();
+      if (scope && findLikeButton(scope)) {
+        return false;
+      }
+    }
+    const scope = find();
+    return !!scope && !!findUnlikeButton(scope);
+  };
+
+  // Already-liked posts expose no "like" button, which is what keeps this from
+  // ever un-liking anything.
+  const likeVerified = async (find) => {
+    const initial = find();
+    if (initial && findUnlikeButton(initial)) {
       return { ok: true, state: "already-liked" };
     }
-    const button = findLikeButton(scope);
+    const button = initial && findLikeButton(initial);
     if (!button) {
       return { ok: false, error: "no-like-button" };
     }
     button.click();
-    const deadline = Date.now() + 3000;
-    while (Date.now() < deadline) {
+    const deadline = Date.now() + LIKE_FLIP_MS;
+    let flipped = false;
+    while (!flipped && Date.now() < deadline) {
       await sleep(120);
-      if (findUnlikeButton(scope)) {
-        return { ok: true, state: "liked" };
-      }
+      const scope = find();
+      flipped = !!scope && !!findUnlikeButton(scope);
     }
-    return { ok: false, error: "like-unconfirmed" };
+    if (!flipped) {
+      return { ok: false, error: "like-unconfirmed" };
+    }
+    return (await likeSettled(find)) ? { ok: true, state: "liked" } : { ok: false, error: "like-reverted" };
   };
 
   const likeAfterDownload = ({ tweetId, likeArticle, likeInBackground }) => {
     if (likeArticle) {
-      return likeInPage(likeArticle);
+      return likeVerified(() => likeArticle);
     }
     if (!likeInBackground) {
       return Promise.resolve(null);
@@ -297,7 +319,10 @@
     const root = createButton(() => ({
       scope: dialog,
       tweetId: extractTweetId([window.location.pathname]),
-      likeArticle: host,
+      // Scope the like to the dialog, not the action bar: the bar can be
+      // re-created while the like settles, and replies inside the dialog sit in
+      // their own <article>, so firstOwnMatch skips them either way.
+      likeArticle: dialog,
     }));
     root.setAttribute(ROOT_ATTR, "viewer");
     root.classList.add("utils-x-download--viewer");
@@ -315,33 +340,19 @@
   const findTweetArticle = (tweetId) =>
     [...document.querySelectorAll("article")].find((candidate) => tweetIdFromArticle(candidate) === tweetId) ?? null;
 
+  // The caller closes this tab as soon as we answer, so answering on the
+  // optimistic heart alone can abort the write in flight. Wait for the article
+  // to exist, then run the same settle check the in-page route uses.
   const likeCurrentTweet = async (tweetId) => {
     if (!tweetStatusUrl(tweetId)) {
       return { ok: false, error: "bad-id" };
     }
+    const find = () => findTweetArticle(tweetId);
     const deadline = Date.now() + 15000;
-    let clicked = false;
     while (Date.now() < deadline) {
-      const article = findTweetArticle(tweetId);
-      if (article) {
-        if (findUnlikeButton(article)) {
-          if (!clicked) {
-            return { ok: true, state: "already-liked" };
-          }
-          // The heart flips before X has written anything. Hold the tab open
-          // long enough to see the write stick, otherwise the caller closes it
-          // mid-request and the like quietly disappears.
-          await sleep(1500);
-          const settled = findTweetArticle(tweetId);
-          return settled && !findUnlikeButton(settled)
-            ? { ok: false, error: "like-reverted" }
-            : { ok: true, state: "liked" };
-        }
-        const button = findLikeButton(article);
-        if (button && !clicked) {
-          button.click();
-          clicked = true;
-        }
+      const article = find();
+      if (article && (findUnlikeButton(article) || findLikeButton(article))) {
+        return likeVerified(find);
       }
       await sleep(100);
     }
