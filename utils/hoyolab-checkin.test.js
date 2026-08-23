@@ -13,7 +13,7 @@ import {
   setCheckinEnabled,
   summarizeCheckinResults,
 } from "./hoyolab-checkin.js";
-import { buildCheckinView, formatCheckinTime } from "./popup.js";
+import { buildCheckinView, formatCheckinTime } from "./hoyolab-popup.js";
 
 const jsonResponse = (payload, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -285,6 +285,25 @@ test("popup time labels are local, compact, and tolerate empty state", () => {
   assert.equal(formatCheckinTime(null, now), "尚无记录");
   assert.equal(formatCheckinTime(new Date(2026, 7, 24, 15, 10).getTime(), now), "今天 15:10");
   assert.equal(formatCheckinTime(new Date(2026, 7, 25, 9, 10).getTime(), now), "明天 09:10");
+  assert.equal(formatCheckinTime(new Date(2026, 7, 20, 9, 10).getTime(), now), "8月20日 09:10");
+});
+
+test("popup view covers failure and first-run fallbacks", () => {
+  const now = new Date(2026, 7, 24, 10, 0);
+  const failed = buildCheckinView({
+    enabled: true,
+    status: "failed",
+    results: [{ status: "failed" }, { status: "failed" }],
+  }, now);
+  assert.equal(failed.detail, "2 个游戏检查失败 · 可再次尝试");
+  assert.equal(failed.action, "重新检查签到");
+
+  const idle = buildCheckinView({ enabled: true, status: "idle" }, now);
+  assert.equal(idle.title, "尚未运行");
+  assert.equal(idle.next, "等待计划");
+
+  const success = buildCheckinView({ enabled: true, status: "success" }, now);
+  assert.equal(success.detail, "--:-- 完成 · 0 个游戏成功");
 });
 
 test("popup markup exposes native controls and live status", async () => {
