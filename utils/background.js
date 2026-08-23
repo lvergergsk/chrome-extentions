@@ -36,7 +36,11 @@ const runHoyolabCheckin = () => {
       .then((results) => {
         for (const result of results) {
           const message = `[HoYoLAB] ${result.game}: ${result.status}${result.error ? ` (${result.error})` : ""}`;
-          (result.status === "failed" || result.status === "login-required" ? console.warn : console.info)(message);
+          if (result.status === "failed" || result.status === "login-required") {
+            console.warn(message);
+          } else {
+            console.info(message);
+          }
         }
         return results;
       })
@@ -47,7 +51,10 @@ const runHoyolabCheckin = () => {
   return hoyolabRun;
 };
 
-ensureCheckinAlarms(chrome.alarms).catch(() => console.warn("[HoYoLAB] failed to schedule check-in"));
+const scheduleHoyolabCheckin = () =>
+  ensureCheckinAlarms(chrome.alarms).catch(() => console.warn("[HoYoLAB] failed to schedule check-in"));
+
+void scheduleHoyolabCheckin();
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (hoyolabAlarmNames.has(alarm.name)) {
@@ -56,7 +63,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void ensureCheckinAlarms(chrome.alarms);
+  void scheduleHoyolabCheckin();
   void runHoyolabCheckin();
 });
 
