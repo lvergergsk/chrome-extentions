@@ -1,12 +1,213 @@
-// The popup is re-read from disk every time it opens, so it can reload the
-// extension even when a stale reload tab has made `npm run reload` a no-op.
-const version = document.querySelector("#version");
-const reloadButton = document.querySelector("#reloadButton");
+const pad = (value) => String(value).padStart(2, "0");
 
-version.textContent = chrome.runtime.getManifest().version;
+const clock = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 
-reloadButton.addEventListener("click", () => {
-  reloadButton.disabled = true;
-  reloadButton.textContent = "重新加载中…";
-  chrome.runtime.reload();
-});
+const sameDay = (left, right) =>
+  left.getFullYear() === right.getFullYear()
+  && left.getMonth() === right.getMonth()
+  && left.getDate() === right.getDate();
+
+export const formatCheckinTime = (timestamp, now = new Date()) => {
+  if (!Number.isFinite(timestamp)) {
+    return "尚无记录";
+  }
+  const date = new Date(timestamp);
+  if (sameDay(date, now)) {
+    return `今天 ${clock(date)}`;
+  }
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (sameDay(date, tomorrow)) {
+    return `明天 ${clock(date)}`;
+  }
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${clock(date)}`;
+};
+
+const successful = (result) => result.status === "signed" || result.status === "already-signed";
+
+export const buildCheckinView = (state, now = new Date()) => {
+  const last = formatCheckinTime(state?.lastRunAt, now);
+  const next = state?.enabled ? (Number.isFinite(state?.nextRunAt) ? formatCheckinTime(state.nextRunAt, now) : "等待计划") : "不自动运行";
+  const base = { last, next, action: "立即检查签到", busy: false };
+
+  if (!state?.enabled) {
+    return {
+      ...base,
+      tone: "paused",
+      chip: "已暂停",
+      title: "自动签到已关闭",
+      detail: "不会按计划运行，仍可手动检查",
+    };
+  }
+
+  if (state.status === "running") {
+    return {
+      ...base,
+      tone: "running",
+      chip: "正在运行",
+      title: "正在检查签到",
+      detail: "正在检查 3 个游戏 · 请稍候",
+      action: "正在签到…",
+      busy: true,
+    };
+  }
+
+  if (state.status === "login-required") {
+    const count = state.results?.filter((result) => result.status === "login-required").length || 3;
+    return {
+      ...base,
+      tone: "warning",
+      chip: "需要处理",
+      title: "需要登录 HoYoLAB",
+      detail: `账号会话已失效 · ${count} 个游戏未完成`,
+      action: "重新检查登录",
+    };
+  }
+
+  if (state.status === "failed") {
+    const count = state.results?.filter((result) => result.status === "failed").length || 1;
+    return {
+      ...base,
+      tone: "error",
+      chip: "需要处理",
+      title: "签到遇到问题",
+      detail: `${count} 个游戏检查失败 · 可再次尝试`,
+      action: "重新检查签到",
+    };
+  }
+
+  if (state.status === "success") {
+    const count = state.results?.filter(successful).length || 0;
+    const completedAt = Number.isFinite(state.lastRunAt) ? clock(new Date(state.lastRunAt)) : "--:--";
+    return {
+      ...base,
+      tone: "success",
+      chip: "运行正常",
+      title: "今日已签到",
+      detail: `${completedAt} 完成 · ${count} 个游戏成功`,
+    };
+  }
+
+  return {
+    ...base,
+    tone: "idle",
+    chip: "运行正常",
+    title: "尚未运行",
+    detail: "等待首次自动检查或立即检查",
+  };
+};
+
+const initPopup = () => {
+  const elements = {
+    version: document.querySelector("#version"),
+    overallStatus: document.querySelector("#overallStatus"),
+    statusChip: document.querySelector("#statusChip"),
+    checkin: document.querySelector(".checkin"),
+    summary: document.querySelector("#checkinSummary"),
+    status: document.querySelector("#checkinStatus"),
+    detail: document.querySelector("#checkinDetail"),
+    last: document.querySelector("#lastCheckin"),
+    next: document.querySelector("#nextCheckin"),
+    toggle: document.querySelector("#autoCheckin"),
+    checkinButton: document.querySelector("#checkinButton"),
+    reloadButton: document.querySelector("#reloadButton"),
+  };
+  let currentState = {
+    enabled: true,
+    status: "idle",
+    lastRunAt: null,
+    nextRunAt: null,
+    results: [],
+  };
+
+  const render = (state) => {
+    currentState = state;
+    const view = buildCheckinView(state);
+    elements.overallStatus.dataset.tone = view.tone;
+    elements.overallStatus.setAttribute("aria-label", `${view.chip}：${view.title}。${view.detail}`);
+    elements.statusChip.textContent = view.chip;
+    elements.checkin.dataset.tone = view.tone;
+    elements.summary.setAttribute("aria-busy", String(view.busy));
+    elements.status.textContent = view.title;
+    elements.detail.textContent = view.detail;
+    elements.last.textContent = view.last;
+    elements.next.textContent = view.next;
+    elements.toggle.checked = Boolean(state.enabled);
+    elements.toggle.disabled = view.busy;
+    elements.checkinButton.disabled = view.busy;
+    elements.checkinButton.textContent = view.action;
+  };
+
+  const readState = async () => {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "utils.hoyolab.getState" });
+      if (!response?.ok) {
+        throw new Error("state-unavailable");
+      }
+      render(response.state);
+      elements.toggle.disabled = false;
+    } catch {
+      render({
+        ...currentState,
+        status: "failed",
+        lastRunAt: Date.now(),
+        results: [{ status: "failed" }],
+      });
+      elements.toggle.disabled = false;
+    }
+  };
+
+  elements.version.textContent = chrome.runtime.getManifest().version;
+
+  elements.toggle.addEventListener("change", async () => {
+    const enabled = elements.toggle.checked;
+    elements.toggle.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "utils.hoyolab.setEnabled", enabled });
+      if (!response?.ok) {
+        throw new Error("setting-failed");
+      }
+      render(response.state);
+    } catch {
+      elements.toggle.checked = currentState.enabled;
+    } finally {
+      elements.toggle.disabled = currentState.status === "running";
+    }
+  });
+
+  elements.checkinButton.addEventListener("click", async () => {
+    render({ ...currentState, status: "running" });
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "utils.hoyolab.run" });
+      if (!response?.ok) {
+        throw new Error("run-failed");
+      }
+      render(response.state);
+    } catch {
+      render({
+        ...currentState,
+        status: "failed",
+        lastRunAt: Date.now(),
+        results: [{ status: "failed" }],
+      });
+    }
+  });
+
+  elements.reloadButton.addEventListener("click", () => {
+    elements.reloadButton.disabled = true;
+    elements.reloadButton.textContent = "重新加载中…";
+    chrome.runtime.reload();
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.hoyolabCheckin?.newValue) {
+      render({ ...currentState, ...changes.hoyolabCheckin.newValue });
+    }
+  });
+
+  void readState();
+};
+
+if (typeof document !== "undefined" && globalThis.chrome?.runtime) {
+  initPopup();
+}

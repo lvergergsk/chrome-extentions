@@ -26,6 +26,59 @@ export const ALARM_SCHEDULES = Object.freeze([
   { name: "utils-hoyolab-afternoon", hour: 15, minute: 10 },
 ]);
 
+export const CHECKIN_STORAGE_KEY = "hoyolabCheckin";
+
+const CHECKIN_STATUSES = new Set(["idle", "running", "success", "login-required", "failed"]);
+const RESULT_STATUSES = new Set(["signed", "already-signed", "login-required", "failed"]);
+
+const cleanResults = (results) => {
+  if (!Array.isArray(results)) {
+    return [];
+  }
+  const gameNames = new Set(GAMES.map(({ name }) => name));
+  return results
+    .filter((result) => gameNames.has(result?.game) && RESULT_STATUSES.has(result?.status))
+    .map(({ game, status }) => ({ game, status }));
+};
+
+const normalizeCheckinState = (value) => ({
+  enabled: typeof value?.enabled === "boolean" ? value.enabled : true,
+  status: CHECKIN_STATUSES.has(value?.status) ? value.status : "idle",
+  lastRunAt: Number.isFinite(value?.lastRunAt) && value.lastRunAt > 0 ? value.lastRunAt : null,
+  results: cleanResults(value?.results),
+});
+
+export const readCheckinState = async (storage) => {
+  const stored = await storage.get(CHECKIN_STORAGE_KEY);
+  return normalizeCheckinState(stored?.[CHECKIN_STORAGE_KEY]);
+};
+
+export const setCheckinEnabled = async (storage, alarms, enabled, now = new Date()) => {
+  const state = { ...(await readCheckinState(storage)), enabled: Boolean(enabled) };
+  await storage.set({ [CHECKIN_STORAGE_KEY]: state });
+  if (state.enabled) {
+    await ensureCheckinAlarms(alarms, now);
+  } else {
+    await Promise.all(ALARM_SCHEDULES.map(({ name }) => alarms.clear(name)));
+  }
+  return state;
+};
+
+export const summarizeCheckinResults = (previous, results, lastRunAt = Date.now()) => {
+  const safeResults = cleanResults(results);
+  const status = safeResults.some((result) => result.status === "login-required")
+    ? "login-required"
+    : safeResults.some((result) => result.status === "failed")
+      ? "failed"
+      : "success";
+  return {
+    ...normalizeCheckinState(previous),
+    status,
+    lastRunAt,
+    results: safeResults,
+  };
+};
+
 export const nextLocalAlarm = (hour, minute, now = new Date()) => {
   const next = new Date(now);
   next.setHours(hour, minute, 0, 0);
