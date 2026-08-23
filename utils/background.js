@@ -1,5 +1,13 @@
 import "./x-media-core.js";
 import "./pixiv-media-core.js";
+import {
+  ALARM_SCHEDULES,
+  CHECKIN_STORAGE_KEY,
+  checkInAll,
+  readCheckinState,
+  setCheckinEnabled,
+  summarizeCheckinResults,
+} from "./hoyolab-checkin.js";
 import { filterUnvisited } from "./sukebei-open-unseen-bg.js";
 
 const {
@@ -21,6 +29,83 @@ const {
 
 // A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
 const PIXIV_FETCH_CONCURRENCY = 3;
+
+const hoyolabAlarmNames = new Set(ALARM_SCHEDULES.map(({ name }) => name));
+let hoyolabRun;
+
+const writeHoyolabState = (state) => chrome.storage.local.set({ [CHECKIN_STORAGE_KEY]: state });
+
+const nextHoyolabRunAt = async () => {
+  const alarms = await Promise.all(ALARM_SCHEDULES.map(({ name }) => chrome.alarms.get(name)));
+  const times = alarms.map((alarm) => alarm?.scheduledTime).filter(Number.isFinite);
+  return times.length > 0 ? Math.min(...times) : null;
+};
+
+const hoyolabSnapshot = async () => {
+  let state = await readCheckinState(chrome.storage.local);
+  if (state.status === "running" && !hoyolabRun) {
+    state = { ...state, status: state.lastRunAt ? "failed" : "idle" };
+    await writeHoyolabState(state);
+  }
+  return {
+    ...state,
+    nextRunAt: state.enabled ? await nextHoyolabRunAt() : null,
+  };
+};
+
+const runHoyolabCheckin = () => {
+  if (!hoyolabRun) {
+    hoyolabRun = (async () => {
+      const previous = await readCheckinState(chrome.storage.local);
+      await writeHoyolabState({ ...previous, status: "running" });
+      try {
+        const results = await checkInAll();
+        const latest = await readCheckinState(chrome.storage.local);
+        await writeHoyolabState(summarizeCheckinResults(latest, results));
+        for (const result of results) {
+          const message = `[HoYoLAB] ${result.game}: ${result.status}${result.error ? ` (${result.error})` : ""}`;
+          if (result.status === "failed" || result.status === "login-required") {
+            console.warn(message);
+          } else {
+            console.info(message);
+          }
+        }
+        return results;
+      } catch {
+        const latest = await readCheckinState(chrome.storage.local).catch(() => previous);
+        await writeHoyolabState({ ...latest, status: "failed", lastRunAt: Date.now(), results: [] }).catch(() => {});
+        console.warn("[HoYoLAB] check-in failed unexpectedly");
+        throw new Error("checkin-failed");
+      }
+    })()
+      .finally(() => {
+        hoyolabRun = null;
+      });
+  }
+  return hoyolabRun;
+};
+
+const scheduleHoyolabCheckin = async () => {
+  const state = await readCheckinState(chrome.storage.local);
+  await setCheckinEnabled(chrome.storage.local, chrome.alarms, state.enabled);
+};
+
+void scheduleHoyolabCheckin().catch(() => console.warn("[HoYoLAB] failed to schedule check-in"));
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (hoyolabAlarmNames.has(alarm.name)) {
+    void readCheckinState(chrome.storage.local)
+      .then((state) => state.enabled && runHoyolabCheckin())
+      .catch(() => console.warn("[HoYoLAB] failed to read check-in settings"));
+  }
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void scheduleHoyolabCheckin()
+    .then(() => readCheckinState(chrome.storage.local))
+    .then((state) => state.enabled && runHoyolabCheckin())
+    .catch(() => console.warn("[HoYoLAB] startup check-in failed"));
+});
 
 const cache = new Map();
 
@@ -242,6 +327,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     setTimeout(() => chrome.runtime.reload(), 50);
     sendResponse({ ok: true });
     return;
+  }
+  if (message?.type === "utils.hoyolab.getState") {
+    hoyolabSnapshot()
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch(() => sendResponse({ ok: false, error: "state-unavailable" }));
+    return true;
+  }
+  if (message?.type === "utils.hoyolab.setEnabled") {
+    if (typeof message.enabled !== "boolean") {
+      sendResponse({ ok: false, error: "bad-request" });
+      return;
+    }
+    setCheckinEnabled(chrome.storage.local, chrome.alarms, message.enabled)
+      .then(() => hoyolabSnapshot())
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch(() => sendResponse({ ok: false, error: "setting-failed" }));
+    return true;
+  }
+  if (message?.type === "utils.hoyolab.run") {
+    runHoyolabCheckin()
+      .then(() => hoyolabSnapshot())
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch(() => sendResponse({ ok: false, error: "checkin-failed" }));
+    return true;
   }
   if (message?.type === "utils.x.cache") {
     cacheMedia(message.tweetId, message.media);
