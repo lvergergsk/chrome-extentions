@@ -1,5 +1,10 @@
 import "./x-media-core.js";
 import "./pixiv-media-core.js";
+import {
+  ALARM_SCHEDULES,
+  checkInAll,
+  ensureCheckinAlarms,
+} from "./hoyolab-checkin.js";
 import { filterUnvisited } from "./sukebei-open-unseen-bg.js";
 
 const {
@@ -21,6 +26,39 @@ const {
 
 // A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
 const PIXIV_FETCH_CONCURRENCY = 3;
+
+const hoyolabAlarmNames = new Set(ALARM_SCHEDULES.map(({ name }) => name));
+let hoyolabRun;
+
+const runHoyolabCheckin = () => {
+  if (!hoyolabRun) {
+    hoyolabRun = checkInAll()
+      .then((results) => {
+        for (const result of results) {
+          const message = `[HoYoLAB] ${result.game}: ${result.status}${result.error ? ` (${result.error})` : ""}`;
+          (result.status === "failed" || result.status === "login-required" ? console.warn : console.info)(message);
+        }
+        return results;
+      })
+      .finally(() => {
+        hoyolabRun = null;
+      });
+  }
+  return hoyolabRun;
+};
+
+ensureCheckinAlarms(chrome.alarms).catch(() => console.warn("[HoYoLAB] failed to schedule check-in"));
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (hoyolabAlarmNames.has(alarm.name)) {
+    void runHoyolabCheckin();
+  }
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void ensureCheckinAlarms(chrome.alarms);
+  void runHoyolabCheckin();
+});
 
 const cache = new Map();
 

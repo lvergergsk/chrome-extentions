@@ -95,6 +95,45 @@ test("checkInGame reports login expiry without exposing response details", async
   assert.deepEqual(result, { game: "Zenless Zone Zero", status: "login-required" });
 });
 
+test("checkInGame fails closed on HTTP, malformed, and API errors", async () => {
+  assert.deepEqual(await checkInGame(GAMES[0], async () => jsonResponse({}, 503)), {
+    game: "Genshin Impact",
+    status: "failed",
+    error: "http-503",
+  });
+  assert.deepEqual(await checkInGame(GAMES[0], async () => jsonResponse({ retcode: "0" })), {
+    game: "Genshin Impact",
+    status: "failed",
+    error: "invalid-response",
+  });
+  assert.deepEqual(await checkInGame(GAMES[0], async () => jsonResponse({ retcode: 7 })), {
+    game: "Genshin Impact",
+    status: "failed",
+    error: "api-7",
+  });
+});
+
+test("checkInGame recognizes login expiry during sign and verification", async () => {
+  const duringSign = [
+    { retcode: 0, data: { is_sign: false } },
+    { retcode: -100, data: null },
+  ];
+  assert.deepEqual(
+    await checkInGame(GAMES[1], async () => jsonResponse(duringSign.shift())),
+    { game: "Honkai: Star Rail", status: "login-required" },
+  );
+
+  const duringVerify = [
+    { retcode: 0, data: { is_sign: false } },
+    { retcode: 0, data: {} },
+    { retcode: -100, data: null },
+  ];
+  assert.deepEqual(
+    await checkInGame(GAMES[2], async () => jsonResponse(duringVerify.shift())),
+    { game: "Zenless Zone Zero", status: "login-required" },
+  );
+});
+
 test("checkInGame fails when the server does not confirm the claimed reward", async () => {
   const responses = [
     { retcode: 0, data: { is_sign: false } },
