@@ -14,8 +14,10 @@ const {
 test("videoIdFromUrl supports YouTube watch pages and Shorts", () => {
   assert.equal(videoIdFromUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ"), "dQw4w9WgXcQ");
   assert.equal(videoIdFromUrl("https://www.youtube.com/shorts/TqW4zXfDdiQ?feature=share"), "TqW4zXfDdiQ");
+  assert.equal(videoIdFromUrl("https://m.youtube.com/watch?v=dQw4w9WgXcQ"), "dQw4w9WgXcQ");
   assert.equal(videoIdFromUrl("https://example.com/watch?v=dQw4w9WgXcQ"), null);
   assert.equal(videoIdFromUrl("https://www.youtube.com/feed/subscriptions"), null);
+  assert.equal(videoIdFromUrl("not a url"), null);
 });
 
 test("selectDownloadFormat chooses the best muxed direct stream", () => {
@@ -76,16 +78,37 @@ test("selectDownloadFormat rejects ciphers and untrusted media hosts", () => {
     }),
     null,
   );
+  assert.equal(selectDownloadFormat(null), null);
+});
+
+test("selectDownloadFormat falls back to a muxed WebM stream", () => {
+  const url = "https://googlevideo.com/videoplayback?id=webm";
+  assert.deepEqual(
+    selectDownloadFormat({
+      formats: [
+        {
+          url,
+          mimeType: 'video/webm; codecs="vp9, opus"',
+          height: 480,
+          audioChannels: 2,
+        },
+      ],
+    }),
+    { url, mimeType: 'video/webm; codecs="vp9, opus"', qualityLabel: "" },
+  );
 });
 
 test("Googlevideo validation and download names stay inside the YouTube folder", () => {
   assert.equal(isAllowedMediaUrl("https://rr1---sn.example.googlevideo.com/videoplayback?id=1"), true);
+  assert.equal(isAllowedMediaUrl("https://googlevideo.com/videoplayback?id=1"), true);
   assert.equal(isAllowedMediaUrl("http://rr1---sn.example.googlevideo.com/videoplayback?id=1"), false);
   assert.equal(isAllowedMediaUrl("https://googlevideo.com.evil.example/video"), false);
+  assert.equal(isAllowedMediaUrl("not a url"), false);
   assert.equal(
     downloadFilename("dQw4w9WgXcQ", 'Rick: Never / Gonna * Give? <You> | Up.', "video/mp4"),
     "Rick Never Gonna Give You Up [dQw4w9WgXcQ].mp4",
   );
+  assert.equal(downloadFilename("bad", "   ", "video/webm"), "YouTube video [youtube].webm");
 });
 
 test("manifest injects the YouTube bridge and button on watch and Shorts pages", async () => {
