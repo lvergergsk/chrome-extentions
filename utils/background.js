@@ -1,5 +1,6 @@
 import "./x-media-core.js";
 import "./pixiv-media-core.js";
+import "./youtube-media-core.js";
 import {
   ALARM_SCHEDULES,
   CHECKIN_STORAGE_KEY,
@@ -26,6 +27,12 @@ const {
   isIllustId,
   mapLimited,
 } = globalThis.UtilsPixivMedia;
+
+const {
+  downloadFilename: youtubeDownloadFilename,
+  isAllowedMediaUrl: isAllowedYouTubeMediaUrl,
+  isVideoId: isYouTubeVideoId,
+} = globalThis.UtilsYouTubeMedia;
 
 // A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
 const PIXIV_FETCH_CONCURRENCY = 3;
@@ -161,6 +168,23 @@ const downloadTweet = async ({ tweetId, media }) => {
     return { ok: false, count: 0, error: lastError || "empty" };
   }
   return { ok: true, count };
+};
+
+const downloadYouTube = async ({ videoId, title, url, mimeType }) => {
+  if (!isYouTubeVideoId(videoId) || !isAllowedYouTubeMediaUrl(url)) {
+    return { ok: false, error: "bad-request" };
+  }
+  try {
+    const downloadId = await chrome.downloads.download({
+      url,
+      filename: `utils-youtube/${youtubeDownloadFilename(videoId, title, mimeType)}`,
+      conflictAction: "uniquify",
+      saveAs: false,
+    });
+    return { ok: true, downloadId };
+  } catch (error) {
+    return { ok: false, error: String(error?.message ?? error) };
+  }
 };
 
 // chrome.downloads.download resolves as soon as the transfer is queued, so a 403
@@ -371,6 +395,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((error) => {
         sendResponse({ ok: false, count: 0, error: String(error?.message ?? error) });
       });
+    return true;
+  }
+  if (message?.type === "utils.youtube.download") {
+    downloadYouTube(message).then(sendResponse);
     return true;
   }
   if (message?.type === "utils.x.like") {
