@@ -1,0 +1,128 @@
+.utils-youtube-download {
+  box-sizing: border-box;
+  color: var(--yt-spec-text-primary, #f1f1f1);
+  font-family: Roboto, Arial, sans-serif;
+}
+
+.utils-youtube-download__button {
+  align-items: center;
+  appearance: none;
+  background: var(--yt-spec-badge-chip-background, rgba(255, 255, 255, 0.1));
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  margin: 0;
+}
+
+.utils-youtube-download__button:hover {
+  background: var(--yt-spec-button-chip-background-hover, rgba(255, 255, 255, 0.2));
+}
+
+.utils-youtube-download__button:focus-visible {
+  outline: 2px solid var(--yt-spec-call-to-action, #3ea6ff);
+  outline-offset: 2px;
+}
+
+.utils-youtube-download__button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.utils-youtube-download__icon {
+  fill: currentColor;
+  flex: 0 0 auto;
+  height: 24px;
+  width: 24px;
+}
+
+.utils-youtube-download__label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.utils-youtube-download__status {
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.utils-youtube-download--watch {
+  display: inline-flex;
+  margin-left: 8px;
+}
+
+.utils-youtube-download--watch .utils-youtube-download__button {
+  border-radius: 20px;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+}
+
+.utils-youtube-download--watch .utils-youtube-download__label {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.utils-youtube-download--watch .utils-youtube-download__label--rail {
+  display: none;
+}
+
+.utils-youtube-download--shorts {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  width: 48px;
+}
+
+.utils-youtube-download--shorts .utils-youtube-download__button {
+  border-radius: 50%;
+  height: 48px;
+  width: 48px;
+}
+
+.utils-youtube-download--shorts .utils-youtube-download__label--button {
+  display: none;
+}
+
+.utils-youtube-download--shorts .utils-youtube-download__label--rail {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  margin-top: 4px;
+  max-width: 72px;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.utils-youtube-download[data-state="loading"] .utils-youtube-download__icon {
+  animation: utils-youtube-download-pulse 900ms ease-in-out infinite;
+}
+
+.utils-youtube-download[data-state="ok"] .utils-youtube-download__button {
+  color: #2ba640;
+}
+
+.utils-youtube-download[data-state="error"] .utils-youtube-download__button {
+  color: #ff4e45;
+}
+
+@keyframes utils-youtube-download-pulse {
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .utils-youtube-download__button,
+  .utils-youtube-download__icon {
+    animation: none !important;
+    transition: none !important;
+  }
+}
