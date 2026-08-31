@@ -1,0 +1,28 @@
+/* kemono.cr TrafficStars / ExoClick slots and affiliate extras. */
+
+.ad-container,
+#ad-banner,
+.sidebar-extra-style.global-sidebar-entry-item,
+a[href*="theporndude.com"],
+a[href*="tsyndicate.com"],
+a[href*="trafficstars.com"],
+a[href*="mnaspm.com"],
+a[href*="magsrv.com"],
+iframe[src*="tsyndicate"],
+iframe[src*="trafficstars"],
+iframe[src*="mnaspm"],
+iframe[src*="magsrv"],
+iframe[src*="exoclick"],
+iframe[src*="juicyads"],
+iframe[src*="popcash"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
