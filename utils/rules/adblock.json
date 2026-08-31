@@ -79,7 +79,9 @@
       "urlFilter": "||theporndude.com^",
       "initiatorDomains": [
         "sukebei.nyaa.si",
-        "nyaa.si"
+        "nyaa.si",
+        "kemono.cr",
+        "www.kemono.cr"
       ]
     }
   },
@@ -331,6 +333,26 @@
     },
     "condition": {
       "urlFilter": "||orangepix.is/istrp/"
+    }
+  },
+  {
+    "id": 34,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||mnaspm.com^"
+    }
+  },
+  {
+    "id": 35,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||magsrv.com^"
     }
   }
 ]

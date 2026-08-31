@@ -12,6 +12,7 @@
   - Sukebei (https://sukebei.nyaa.si/) 广告拦截（网络层拦截 + 页面桩注入 + 广告容器自动清理）。
   - ouo.io / ouo.press 广告拦截（挡住「I'm a human」的浮层、弹窗、广告脚本），验证完成后自动点继续。
   - orangepix.is 广告拦截（顶栏横幅、联盟图、/htsrc.js 弹窗、年龄确认层）。
+  - Kemono (https://kemono.cr/) 广告拦截（TrafficStars / ExoClick 网络层拦截 + 广告容器清理 + 弹窗拦截）。
   - Sukebei 列表页：标题含 `AI生成` 或「アンソロジー」时整行文字标红。
   - Sukebei 列表页按钮：每隔约 3 秒打开未标红、且浏览记录里没访问过的条目；打开后标题会变成灰色，和手动点过一样。
 

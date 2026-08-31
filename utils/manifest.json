@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Utils",
   "description": "Personal utilities, including HoYoLAB check-in, media download, and ad blocking.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA49zjaYcSVaR0yJDty20MrTFngBy8dNsWnHBZ6p/eORVc+DikHsvV92k3f73Jdg6wNo2pto+W9wjtGoGJ/pDaFgE0Afqp0+W1qsxFOiEpNcmFgbToQk0or85vmHTLoapQiT/caxh7hK8zPXYPNRJ77sddMc54+vuASxWlra8oVKVsRhhqQJ351e5lvMoTmBHYW2Bla7OuFgfAUXSdsOB2OSLlZ6iPhGBdRPgdw/T9BzcYGguqx+fYHJWjS7oYN5Oq0KUgtA7oLVGyyz2/Aah4+9QegF1h/UIubQscNX9ELZjW8o+xxxuIKByIbXWl1W2IvGV1tCPCX4W+bD+ldQ2+HQIDAQAB",
   "action": {
     "default_title": "Utils",
@@ -49,7 +49,9 @@
     "*://ouo.press/*",
     "*://*.ouo.press/*",
     "*://orangepix.is/*",
-    "*://*.orangepix.is/*"
+    "*://*.orangepix.is/*",
+    "*://kemono.cr/*",
+    "*://*.kemono.cr/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -214,6 +216,31 @@
       ],
       "css": [
         "orangepix-adblock.css"
+      ],
+      "world": "ISOLATED",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://kemono.cr/*",
+        "*://*.kemono.cr/*"
+      ],
+      "js": [
+        "kemono-adblock-page.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "*://kemono.cr/*",
+        "*://*.kemono.cr/*"
+      ],
+      "js": [
+        "kemono-adblock.js"
+      ],
+      "css": [
+        "kemono-adblock.css"
       ],
       "world": "ISOLATED",
       "run_at": "document_start"
