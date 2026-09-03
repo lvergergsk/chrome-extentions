@@ -23,6 +23,34 @@ export const formatCheckinTime = (timestamp, now = new Date()) => {
   return `${date.getMonth() + 1}月${date.getDate()}日 ${clock(date)}`;
 };
 
+export const buildRedeemView = (redeem, now = new Date()) => {
+  if (!redeem) {
+    return { detail: "正在读取状态…", enabled: true, busy: true };
+  }
+  const base = { enabled: Boolean(redeem.enabled), busy: redeem.status === "running" };
+  if (!redeem.enabled) {
+    return { ...base, detail: "不自动兑换 · 可随时开启" };
+  }
+  if (redeem.status === "running") {
+    return { ...base, detail: "正在兑换 · 每个兑换码间隔 6 秒" };
+  }
+  if (redeem.status === "login-required") {
+    return { ...base, detail: "需要登录 HoYoverse 账号" };
+  }
+  if (redeem.status === "failed") {
+    const reason = redeem.results?.find((result) => result.error)?.error;
+    return { ...base, detail: reason ? `上次兑换失败 · ${reason}` : "上次兑换失败 · 可再次尝试" };
+  }
+  if (redeem.status === "success") {
+    const count = redeem.results?.reduce((total, result) => total + (result.redeemed || 0), 0) || 0;
+    return {
+      ...base,
+      detail: count > 0 ? `${formatCheckinTime(redeem.lastRunAt, now)} 兑换 ${count} 个` : "没有新的兑换码",
+    };
+  }
+  return { ...base, detail: "跟随签到计划自动兑换" };
+};
+
 const successful = (result) => result.status === "signed" || result.status === "already-signed";
 
 export const buildCheckinView = (state, now = new Date()) => {

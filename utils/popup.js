@@ -1,4 +1,4 @@
-import { buildCheckinView } from "./hoyolab-popup.js";
+import { buildCheckinView, buildRedeemView } from "./hoyolab-popup.js";
 
 const initPopup = () => {
   const elements = {
@@ -12,6 +12,8 @@ const initPopup = () => {
     last: document.querySelector("#lastCheckin"),
     next: document.querySelector("#nextCheckin"),
     toggle: document.querySelector("#autoCheckin"),
+    redeemDetail: document.querySelector("#redeemDetail"),
+    redeemToggle: document.querySelector("#autoRedeem"),
     checkinButton: document.querySelector("#checkinButton"),
     reloadButton: document.querySelector("#reloadButton"),
   };
@@ -39,6 +41,10 @@ const initPopup = () => {
     elements.toggle.disabled = view.busy;
     elements.checkinButton.disabled = view.busy;
     elements.checkinButton.textContent = view.action;
+    const redeem = buildRedeemView(state.redeem);
+    elements.redeemDetail.textContent = redeem.detail;
+    elements.redeemToggle.checked = redeem.enabled;
+    elements.redeemToggle.disabled = redeem.busy;
   };
 
   const readState = async () => {
@@ -49,6 +55,7 @@ const initPopup = () => {
       }
       render(response.state);
       elements.toggle.disabled = false;
+      elements.redeemToggle.disabled = false;
     } catch {
       render({
         ...currentState,
@@ -78,6 +85,22 @@ const initPopup = () => {
     }
   });
 
+  elements.redeemToggle.addEventListener("change", async () => {
+    const enabled = elements.redeemToggle.checked;
+    elements.redeemToggle.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "utils.hoyolab.setRedeemEnabled", enabled });
+      if (!response?.ok) {
+        throw new Error("setting-failed");
+      }
+      render(response.state);
+    } catch {
+      elements.redeemToggle.checked = Boolean(currentState.redeem?.enabled);
+    } finally {
+      elements.redeemToggle.disabled = currentState.redeem?.status === "running";
+    }
+  });
+
   elements.checkinButton.addEventListener("click", async () => {
     render({ ...currentState, status: "running" });
     try {
@@ -103,8 +126,14 @@ const initPopup = () => {
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes.hoyolabCheckin?.newValue) {
+    if (areaName !== "local") {
+      return;
+    }
+    if (changes.hoyolabCheckin?.newValue) {
       render({ ...currentState, ...changes.hoyolabCheckin.newValue });
+    }
+    if (changes.hoyolabRedeem?.newValue) {
+      render({ ...currentState, redeem: changes.hoyolabRedeem.newValue });
     }
   });
 

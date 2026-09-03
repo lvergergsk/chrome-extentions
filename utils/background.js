@@ -9,6 +9,13 @@ import {
   setCheckinEnabled,
   summarizeCheckinResults,
 } from "./hoyolab-checkin.js";
+import {
+  REDEEM_STORAGE_KEY,
+  readRedeemState,
+  redeemAll,
+  setRedeemEnabled,
+  summarizeRedeemResults,
+} from "./hoyolab-redeem.js";
 import { filterUnvisited } from "./sukebei-open-unseen-bg.js";
 
 const {
@@ -57,6 +64,7 @@ const hoyolabSnapshot = async () => {
   return {
     ...state,
     nextRunAt: state.enabled ? await nextHoyolabRunAt() : null,
+    redeem: await redeemSnapshot(),
   };
 };
 
@@ -92,6 +100,62 @@ const runHoyolabCheckin = () => {
   return hoyolabRun;
 };
 
+let hoyolabRedeemRun;
+
+const writeRedeemState = (state) => chrome.storage.local.set({ [REDEEM_STORAGE_KEY]: state });
+
+const redeemSnapshot = async () => {
+  const state = await readRedeemState(chrome.storage.local);
+  if (state.status === "running" && !hoyolabRedeemRun) {
+    const recovered = { ...state, status: state.lastRunAt ? "failed" : "idle" };
+    await writeRedeemState(recovered);
+    return recovered;
+  }
+  return state;
+};
+
+const runHoyolabRedeem = () => {
+  if (!hoyolabRedeemRun) {
+    hoyolabRedeemRun = (async () => {
+      const previous = await readRedeemState(chrome.storage.local);
+      await writeRedeemState({ ...previous, status: "running" });
+      try {
+        // Banking each settled code also touches an extension API often enough to
+        // keep the worker awake through the run's cooldown gaps.
+        const outcome = await redeemAll(previous, fetch, undefined, (done) =>
+          writeRedeemState({ ...previous, status: "running", done }),
+        );
+        await writeRedeemState(summarizeRedeemResults(previous, outcome));
+        for (const result of outcome.results) {
+          const message = `[HoYoLAB] ${result.game}: redeem ${result.status} (+${result.redeemed})${result.error ? ` (${result.error})` : ""}`;
+          if (result.status === "done") {
+            console.info(message);
+          } else {
+            console.warn(message);
+          }
+        }
+        return outcome.results;
+      } catch {
+        await writeRedeemState({ ...previous, status: "failed", lastRunAt: Date.now(), results: [] }).catch(() => {});
+        console.warn("[HoYoLAB] redeem failed unexpectedly");
+        throw new Error("redeem-failed");
+      }
+    })().finally(() => {
+      hoyolabRedeemRun = null;
+    });
+  }
+  return hoyolabRedeemRun;
+};
+
+// Redemption rides the check-in alarms rather than adding a scheduler of its own.
+const runHoyolabDaily = async () => {
+  await runHoyolabCheckin();
+  const redeem = await readRedeemState(chrome.storage.local);
+  if (redeem.enabled) {
+    await runHoyolabRedeem();
+  }
+};
+
 const scheduleHoyolabCheckin = async () => {
   const state = await readCheckinState(chrome.storage.local);
   await setCheckinEnabled(chrome.storage.local, chrome.alarms, state.enabled);
@@ -102,7 +166,7 @@ void scheduleHoyolabCheckin().catch(() => console.warn("[HoYoLAB] failed to sche
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (hoyolabAlarmNames.has(alarm.name)) {
     void readCheckinState(chrome.storage.local)
-      .then((state) => state.enabled && runHoyolabCheckin())
+      .then((state) => state.enabled && runHoyolabDaily())
       .catch(() => console.warn("[HoYoLAB] failed to read check-in settings"));
   }
 });
@@ -110,7 +174,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onStartup.addListener(() => {
   void scheduleHoyolabCheckin()
     .then(() => readCheckinState(chrome.storage.local))
-    .then((state) => state.enabled && runHoyolabCheckin())
+    .then((state) => state.enabled && runHoyolabDaily())
     .catch(() => console.warn("[HoYoLAB] startup check-in failed"));
 });
 
@@ -370,10 +434,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message?.type === "utils.hoyolab.run") {
-    runHoyolabCheckin()
+    runHoyolabDaily()
       .then(() => hoyolabSnapshot())
       .then((state) => sendResponse({ ok: true, state }))
       .catch(() => sendResponse({ ok: false, error: "checkin-failed" }));
+    return true;
+  }
+  if (message?.type === "utils.hoyolab.setRedeemEnabled") {
+    if (typeof message.enabled !== "boolean") {
+      sendResponse({ ok: false, error: "bad-request" });
+      return;
+    }
+    setRedeemEnabled(chrome.storage.local, message.enabled)
+      .then(() => hoyolabSnapshot())
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch(() => sendResponse({ ok: false, error: "setting-failed" }));
+    return true;
+  }
+  if (message?.type === "utils.hoyolab.redeem") {
+    runHoyolabRedeem()
+      .then(() => hoyolabSnapshot())
+      .then((state) => sendResponse({ ok: true, state }))
+      .catch(() => sendResponse({ ok: false, error: "redeem-failed" }));
     return true;
   }
   if (message?.type === "utils.x.cache") {
