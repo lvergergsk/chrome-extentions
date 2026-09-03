@@ -57,6 +57,20 @@ input {
   padding: 0 4px;
 }
 
+.popup__brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup__logo {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+
 h1,
 h2,
 h3,

@@ -1,0 +1,23 @@
+/* gamebanana.com Playwire/RAMP ad rails, in-grid slot and GPT containers.
+   #adBanner and .ad_row.adbannertop are ad-blocker bait, not ads: never hide
+   them or the site notices the blocker. */
+
+.pw-tag,
+#pw-oop-flex_container,
+#pwAdContainer,
+.InGridPlaceholder,
+#pw_user_data,
+[id^="google_ads_iframe"],
+iframe[src*="safeframe.googlesyndication.com"],
+iframe[src*="intergient.com"] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}

@@ -1,4 +1,4 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,8 +6,6 @@ import vm from "node:vm";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "../..");
-const ignoredRootDirs = new Set(["node_modules", "dist", "build", "coverage", "scripts"]);
-
 const errors = [];
 
 const exists = async (filePath) => {
@@ -116,21 +114,23 @@ const validateExtension = async (entryName) => {
     }
   }
 
+  const requiredIconSizes = ["16", "48", "128"];
+  for (const size of requiredIconSizes) {
+    if (!manifest.icons?.[size]) {
+      errors.push(`${entryName}/manifest.json must include icons.${size}`);
+    }
+  }
+
   for (const [size, iconFile] of Object.entries(manifest.icons ?? {})) {
     await requireReferencedFile(extensionDir, iconFile, `${entryName} icons.${size}`);
   }
+
+  for (const [size, iconFile] of Object.entries(manifest.action?.default_icon ?? {})) {
+    await requireReferencedFile(extensionDir, iconFile, `${entryName} action.default_icon.${size}`);
+  }
 };
 
-const entries = await readdir(repoRoot, { withFileTypes: true });
-const extensionDirs = entries
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => entry.name)
-  .filter((name) => !name.startsWith(".") && !ignoredRootDirs.has(name))
-  .sort();
-
-if (extensionDirs.length === 0) {
-  errors.push("No extension folders found at the repository root");
-}
+const extensionDirs = ["utils"];
 
 for (const extensionDir of extensionDirs) {
   await validateExtension(extensionDir);
