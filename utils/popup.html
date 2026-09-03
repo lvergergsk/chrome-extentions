@@ -54,6 +54,21 @@
           </div>
         </dl>
 
+        <div class="checkin__divider" aria-hidden="true"></div>
+
+        <div class="checkin__header">
+          <span class="feature-icon" aria-hidden="true">C</span>
+          <div class="checkin__heading">
+            <h2 id="redeemTitle">兑换码自动兑换</h2>
+            <p id="redeemDetail">正在读取状态…</p>
+          </div>
+          <label class="toggle" for="autoRedeem">
+            <span class="sr-only">启用兑换码自动兑换</span>
+            <input id="autoRedeem" type="checkbox" role="switch" aria-describedby="redeemDetail" disabled>
+            <span class="toggle__track" aria-hidden="true"></span>
+          </label>
+        </div>
+
         <button id="checkinButton" class="button button--primary" type="button" disabled>正在读取…</button>
       </section>
 

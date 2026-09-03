@@ -5,7 +5,7 @@
   "description": "Personal Chrome extensions.",
   "type": "module",
   "scripts": {
-    "test": "node --test utils/hoyolab-checkin.test.js utils/x-media-core.test.js utils/x-media-classic.test.js utils/pixiv-media-core.test.js utils/youtube-media-core.test.js utils/sukebei-adblock.test.js utils/sukebei-list-flags.test.js utils/sukebei-open-unseen.test.js utils/sukebei-open-unseen-bg.test.js utils/ouo-adblock.test.js utils/orangepix-adblock.test.js scripts/extension-id.test.js && node .github/scripts/validate-extensions.mjs",
+    "test": "node --test utils/hoyolab-checkin.test.js utils/hoyolab-redeem.test.js utils/x-media-core.test.js utils/x-media-classic.test.js utils/pixiv-media-core.test.js utils/youtube-media-core.test.js utils/sukebei-adblock.test.js utils/sukebei-list-flags.test.js utils/sukebei-open-unseen.test.js utils/sukebei-open-unseen-bg.test.js utils/ouo-adblock.test.js utils/orangepix-adblock.test.js scripts/extension-id.test.js && node .github/scripts/validate-extensions.mjs",
     "load": "node scripts/load-utils.mjs",
     "reload": "node scripts/load-utils.mjs --reload"
   },
