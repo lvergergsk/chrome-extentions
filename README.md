@@ -6,6 +6,8 @@
 
 ## 功能
 
+- Windows Native Messaging：配合 `gg browser` 列出、打开和整理标签页；按 URL/标题排序、完全相同 URL 去重，保留分组，固定标签页默认不动。
+- 标签页快捷键：`Alt+Shift+←/→` 移动选中标签页，`Alt+Shift+↑/↓` 移到所在固定/非固定区域的最前/最后。
 - X/Twitter 帖子图片和视频一键下载（自动点赞）。
 - pixiv 作品原图一键下载（自动收藏）。作品页大图和列表缩略图都有按钮，多图作品一次下齐；已收藏的作品不会被重复写入（避免覆盖已有标签和留言）；うごイラ（动图）暂不支持。
 - YouTube 普通视频和 Shorts 一键下载。按钮位于分享按钮之后，下载当前视频可用的最高画质单文件格式（含音频，优先 MP4）。
@@ -19,6 +21,32 @@
 - Sukebei 列表页按钮：每隔约 3 秒打开未标红、且浏览记录里没访问过的条目；打开后标题会变成灰色，和手动点过一样。
 
 ## 本地加载
+
+### GG Native Messaging
+
+在个人 Windows 电脑更新 [gg-cli](https://github.com/lvergergsk/gg-cli)，于该仓库执行：
+
+```powershell
+make install
+gg browser install
+```
+
+然后重新加载 Utils（新增 `nativeMessaging`、`tabs`、`tabGroups` 权限），执行：
+
+```powershell
+gg browser status
+gg browser tabs
+gg browser organize
+gg browser organize --apply
+```
+
+`organize` 默认仅预览，`--apply` 才排序和关闭重复 URL 标签页。支持 `--sort-by title`、`--window ID`、`--keep-duplicates`、`--include-pinned`。去重优先保留固定、活动、最左侧副本；查询参数和锚点不同的 URL 不合并。
+
+只在一个 Chrome profile 启用 Utils 桥接。扩展断线后每分钟重连；快捷键冲突可在 `chrome://extensions/shortcuts` 修改。桥接仅接受 `ping`、`tabs.list`、`tabs.open`、`tabs.organize`；网页和 content script 不能向 Native Host 转发命令。卸载用 `gg browser uninstall`，随后重新加载 Utils。
+
+Windows/Chrome 实机安装、重连和分组保持仍需验证；协议与步骤见 [Chrome bridge 文档](https://github.com/lvergergsk/gg-cli/blob/develop/docs/browser.md)。现有弹窗保持原样。
+
+### 加载扩展
 
 Chrome 151 已去掉 `--load-extension`，**第一次安装必须在扩展页点一次「加载已解压的扩展程序」**。装过之后可以用脚本更新：
 
