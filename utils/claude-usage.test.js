@@ -5,7 +5,7 @@ import { validateRequest } from "./browser-bridge.js";
 
 const org = { uuid: "00000000-0000-4000-8000-000000000001", capabilities: ["chat", "claude_pro"] };
 const bootstrap = { account: { email: "private@example.invalid", memberships: [{ organization: org }] } };
-const grant = { id: "test_grant", label: "private label", resets_left: 2,
+const grant = { id: "test_grant", label: "private label", resets_total: 2, resets_left: 2,
   starts_at: "2026-09-22T00:00:00Z", ends_at: "2026-10-05T00:00:00Z", paused: false };
 const usage = { five_hour: { utilization: 1, resets_at: "2026-09-23T08:00:00Z" },
   seven_day: { utilization: 40, resets_at: "2026-09-29T00:00:00Z" },
@@ -58,6 +58,9 @@ test("ambiguous, missing, non-personal and malformed organizations never reach u
 test("unknown and malformed reset inventories remain unknown without leaking metadata", () => {
   for (const block of [null, {}, { eligible: true },
     { eligible: true, grants: [{ ...grant, resets_left: -1 }] },
+    { eligible: true, grants: [{ ...grant, resets_left: 3 }] },
+    { eligible: true, grants: [{ ...grant, resets_total: undefined }] },
+    { eligible: true, grants: [{ ...grant, ends_at: undefined }] },
     { eligible: true, grants: [{ ...grant, paused: "false" }] },
     { eligible: true, grants: [{ ...grant, ends_at: "2026-10-05" }] },
     { eligible: true, grants: [grant, grant] }]) {

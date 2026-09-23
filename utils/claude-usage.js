@@ -23,7 +23,9 @@ function resetInventory(block) {
   const grants = [];
   for (const grant of block.grants) {
     if (!grant || typeof grant.id !== "string" || !/^[a-z0-9_-]{1,40}$/.test(grant.id)
+        || !Number.isSafeInteger(grant.resets_total) || grant.resets_total < 1
         || !Number.isSafeInteger(grant.resets_left) || grant.resets_left < 0
+        || grant.resets_left > grant.resets_total || grant.ends_at == null
         || (grant.paused !== undefined && typeof grant.paused !== "boolean")) return null;
     if (seen.has(grant.id)) return null;
     seen.add(grant.id);
