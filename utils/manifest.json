@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Utils",
   "description": "Personal utilities, including HoYoLAB check-in, media download, and ad blocking.",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "icons": {
     "16": "icons/16.png",
     "32": "icons/32.png",
@@ -23,8 +23,17 @@
     "declarativeNetRequest",
     "history",
     "alarms",
-    "storage"
+    "storage",
+    "nativeMessaging",
+    "tabs",
+    "tabGroups"
   ],
+  "commands": {
+    "tab-front": { "description": "Move selected tabs to the front", "suggested_key": { "default": "Alt+Shift+Up" } },
+    "tab-back": { "description": "Move selected tabs to the back", "suggested_key": { "default": "Alt+Shift+Down" } },
+    "tab-left": { "description": "Move selected tabs left", "suggested_key": { "default": "Alt+Shift+Left" } },
+    "tab-right": { "description": "Move selected tabs right", "suggested_key": { "default": "Alt+Shift+Right" } }
+  },
   "declarative_net_request": {
     "rule_resources": [
       {

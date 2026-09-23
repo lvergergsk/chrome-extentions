@@ -17,6 +17,9 @@ import {
   summarizeRedeemResults,
 } from "./hoyolab-redeem.js";
 import { filterUnvisited } from "./sukebei-open-unseen-bg.js";
+import { startBrowserBridge } from "./browser-bridge.js";
+
+startBrowserBridge();
 
 const {
   downloadFilename,
