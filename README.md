@@ -7,6 +7,7 @@
 ## 功能
 
 - Windows Native Messaging：配合 `gg browser` 列出、打开和整理标签页；按 URL/标题排序、完全相同 URL 去重，保留分组，固定标签页默认不动。
+- Claude 用量：`gg agents usage` 通过同一个扩展实时查询 Chrome 已登录账号的额度、可用重置次数和到期日。仅支持唯一的个人 Pro/Max 订阅；多订阅不自动选择。Cookie 和账号信息留在浏览器内，不缓存用量，也不执行重置。
 - 标签页快捷键：`Alt+Shift+←/→` 移动选中标签页，`Alt+Shift+↑/↓` 移到所在固定/非固定区域的最前/最后。
 - X/Twitter 帖子图片和视频一键下载（自动点赞）。
 - pixiv 作品原图一键下载（自动收藏）。作品页大图和列表缩略图都有按钮，多图作品一次下齐；已收藏的作品不会被重复写入（避免覆盖已有标签和留言）；うごイラ（动图）暂不支持。
@@ -42,7 +43,7 @@ gg browser organize --apply
 
 `organize` 默认仅预览，`--apply` 才排序和关闭重复 URL 标签页。支持 `--sort-by title`、`--window ID`、`--keep-duplicates`、`--include-pinned`。去重优先保留固定、活动、最左侧副本；查询参数和锚点不同的 URL 不合并。
 
-只在一个 Chrome profile 启用 Utils 桥接。扩展断线后每分钟重连；快捷键冲突可在 `chrome://extensions/shortcuts` 修改。桥接仅接受 `ping`、`tabs.list`、`tabs.open`、`tabs.organize`；网页和 content script 不能向 Native Host 转发命令。卸载用 `gg browser uninstall`，随后重新加载 Utils。
+只在一个 Chrome profile 启用 Utils 桥接。扩展断线后每分钟重连；快捷键冲突可在 `chrome://extensions/shortcuts` 修改。桥接仅接受 `ping`、`tabs.list`、`tabs.open`、`tabs.organize`、`claude.usage`；网页和 content script 不能向 Native Host 转发命令。`claude.usage` 不接受参数，只查询固定的 Claude 官方接口；需要新增的 `claude.ai` 网站权限，更新后重新加载 Utils。卸载用 `gg browser uninstall`，随后重新加载 Utils。
 
 Windows/Chrome 实机安装、重连和分组保持仍需验证；协议与步骤见 [Chrome bridge 文档](https://github.com/lvergergsk/gg-cli/blob/develop/docs/browser.md)。现有弹窗保持原样。
 

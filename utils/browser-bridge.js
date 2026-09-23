@@ -1,10 +1,12 @@
 import { moveHighlightedTabs, organizeTabs, queueTabWork, tabResult } from "./tabs.js";
+import { readClaudeUsage } from "./claude-usage.js";
 
 export const NATIVE_HOST = "com.lvergergsk.gg_browser";
 const RECONNECT_ALARM = "gg-browser-reconnect";
 const MAX_MESSAGE = 1024 * 1024;
 const METHODS = {
   ping: [],
+  "claude.usage": [],
   "tabs.list": ["windowId"],
   "tabs.open": ["url", "active", "windowId"],
   "tabs.organize": ["windowId", "sortBy", "includePinned", "dedupe", "apply"],
@@ -42,6 +44,8 @@ export async function dispatchRequest(request, api = chrome) {
   switch (request.method) {
     case "ping":
       return { protocol: 1, version: api.runtime.getManifest().version };
+    case "claude.usage":
+      return readClaudeUsage();
     case "tabs.list":
       return (await api.tabs.query(params)).filter((tab) => !tab.incognito).map(tabResult);
     case "tabs.open": {
