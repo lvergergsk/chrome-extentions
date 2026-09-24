@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { dispatchRequest, NATIVE_HOST, startBrowserBridge, validateRequest } from "./browser-bridge.js";
-import { duplicateTabIds, organizeTabs, planTabMoves } from "./tabs.js";
+import { duplicateTabIds, organizeTabs, planTabMoves, queueTabWork } from "./tabs.js";
 
 const request = (method, params = {}) => ({ id: "a".repeat(32), method, params });
 const tab = (id, index, extra = {}) => ({
@@ -198,16 +198,24 @@ test("popup actions use the worker queue, preserve duplicates, and reject other 
   }
   const moves = [];
   api.tabs.query = async (query) => {
-    assert.deepEqual(query, { windowId: 7 });
+    assert.deepEqual(query, { currentWindow: true });
     return [tab(1, 0, { pinned: true }), tab(2, 1), tab(3, 2, { highlighted: true }), tab(4, 3)];
   };
   api.tabs.move = async (id, position) => moves.push([id, position.index]);
   for (const action of ["tab-left", "tab-right", "tab-front", "tab-back"]) {
-    assert.deepEqual(await send({ ...message, action }), { ok: true });
+    assert.deepEqual(await send({ ...message, action }), { ok: false });
+    api.commands.onCommand.listeners[0](action);
+    await queueTabWork(() => {});
   }
   assert.deepEqual(moves, [[3, 1], [3, 3], [3, 1], [3, 3]]);
   api.tabs.move = async () => { throw new Error("tab closed"); };
-  assert.deepEqual(await send({ ...message, action: "tab-left" }), { ok: false });
-  api.tabs.move = async () => {};
-  assert.deepEqual(await send({ ...message, action: "tab-right" }), { ok: true });
+  api.commands.onCommand.listeners[0]("tab-left");
+  await queueTabWork(() => {});
+  api.tabs.move = async (id, position) => moves.push([id, position.index]);
+  api.commands.onCommand.listeners[0]("tab-right");
+  await queueTabWork(() => {});
+  assert.deepEqual(moves.at(-1), [3, 3]);
+  const html = readFileSync(new URL("./popup.html", import.meta.url), "utf8");
+  assert.equal((html.match(/data-tab-action=/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /data-tab-action="tab-/);
 });

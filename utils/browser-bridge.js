@@ -100,14 +100,12 @@ export function startBrowserBridge(api = chrome) {
     if (message?.type !== "utils.tabs.action") return;
     if (sender.id !== api.runtime.id || sender.tab || sender.url !== api.runtime.getURL("popup.html")) return;
     const { action, windowId } = message;
-    if (!["sort-url", "sort-title", "tab-left", "tab-right", "tab-front", "tab-back"].includes(action)
+    if (!["sort-url", "sort-title"].includes(action)
         || !Number.isSafeInteger(windowId) || windowId < 0) {
       sendResponse({ ok: false });
       return;
     }
-    queueTabWork(() => action.startsWith("sort-")
-      ? organizeTabs({ windowId, sortBy: action.slice(5), apply: true, dedupe: false }, api)
-      : moveHighlightedTabs(action, api, windowId))
+    queueTabWork(() => organizeTabs({ windowId, sortBy: action.slice(5), apply: true, dedupe: false }, api))
       .then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
     return true;
   });
