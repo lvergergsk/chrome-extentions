@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Utils",
   "description": "Personal utilities, including HoYoLAB check-in, media download, and ad blocking.",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "icons": {
     "16": "icons/16.png",
     "32": "icons/32.png",

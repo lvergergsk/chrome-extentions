@@ -71,6 +71,10 @@ const validateExtension = async (entryName) => {
 
   requireString(manifest, "name", manifestPath);
   requireString(manifest, "version", manifestPath);
+  const packageJson = await readJson(path.join(repoRoot, "package.json"));
+  if (packageJson && packageJson.version !== manifest.version) {
+    errors.push(`${entryName}/manifest.json version must match package.json`);
+  }
 
   if (manifest.action?.default_popup) {
     await requireReferencedFile(extensionDir, manifest.action.default_popup, `${entryName} action.default_popup`);
