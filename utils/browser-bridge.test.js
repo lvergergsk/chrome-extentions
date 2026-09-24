@@ -153,7 +153,11 @@ test("native bridge reconnects after disconnect and never duplicates a live port
         return port;
       },
     },
-    commands: { onCommand: event() },
+    commands: { onCommand: event(), getAll: async () => [
+      { name: "tab-left", shortcut: "Alt+Shift+Left" },
+      { name: "tab-right", shortcut: "" },
+      { name: "_execute_action", shortcut: "" },
+    ] },
     alarms: { onAlarm: event(), create: (name) => { alarms.push(name); } },
   };
   startBrowserBridge(api);
@@ -162,7 +166,12 @@ test("native bridge reconnects after disconnect and never duplicates a live port
   reconnect();
   assert.equal(connections.length, 1);
   await connections[0].onMessage.listeners[0](request("ping"));
-  assert.deepEqual(connections[0].sent, [{ id: "a".repeat(32), ok: true, result: { protocol: 1, version: "test" } }]);
+  assert.deepEqual(connections[0].sent, [{ id: "a".repeat(32), ok: true, result: {
+    protocol: 1, version: "test", shortcuts: [
+      { name: "tab-left", shortcut: "Alt+Shift+Left" },
+      { name: "tab-right", shortcut: "" },
+    ],
+  } }]);
   connections[0].onDisconnect.listeners[0]();
   reconnect();
   assert.equal(connections.length, 2);

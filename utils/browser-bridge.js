@@ -43,7 +43,13 @@ export async function dispatchRequest(request, api = chrome) {
   const params = validateRequest(request);
   switch (request.method) {
     case "ping":
-      return { protocol: 1, version: api.runtime.getManifest().version };
+      return {
+        protocol: 1,
+        version: api.runtime.getManifest().version,
+        shortcuts: (await api.commands.getAll())
+          .filter(({ name }) => name.startsWith("tab-"))
+          .map(({ name, shortcut }) => ({ name, shortcut })),
+      };
     case "claude.usage":
       return readClaudeUsage();
     case "tabs.list":
