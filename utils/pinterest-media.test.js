@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import "./pinterest-media-core.js";
 
-const { isPinId, isAllowedMediaUrl, mediaFromProps, pinIdFromUrl } = globalThis.UtilsPinterestMedia;
+const { isPinId, isAllowedMediaUrl, mainMediaHost, mediaFromProps, pinIdFromUrl } = globalThis.UtilsPinterestMedia;
 
 test("finds pin IDs without accepting other links", () => {
   assert.equal(pinIdFromUrl("/pin/17170042326047894/"), "17170042326047894");
@@ -34,4 +34,16 @@ test("only Pinterest image and direct video hosts are downloadable", () => {
   for (const url of ["http://i.pinimg.com/a.jpg", "https://i.pinimg.com.evil.test/a.jpg", "https://v1.pinimg.com/a.m3u8", "blob:https://jp.pinterest.com/a"]) {
     assert.equal(isAllowedMediaUrl(url), false, url);
   }
+});
+
+test("detail button attaches to image and video closeups", () => {
+  const image = {};
+  const video = {};
+  const doc = { querySelector: (selector) => ({
+    '[id="closeup-image-container-1"]': image,
+    '[data-test-id="closeup-video-with-visibility"][data-pin-drag-id="2"]': video,
+  })[selector] ?? null };
+  assert.equal(mainMediaHost(doc, "1"), image);
+  assert.equal(mainMediaHost(doc, "2"), video);
+  assert.equal(mainMediaHost(doc, "../2"), null);
 });

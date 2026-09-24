@@ -1,5 +1,5 @@
 (() => {
-  const { isPinId, mediaFromProps, pinIdFromUrl, isAllowedMediaUrl } = globalThis.UtilsPinterestMedia;
+  const { isPinId, mediaFromProps, pinIdFromUrl, isAllowedMediaUrl, mainMediaHost } = globalThis.UtilsPinterestMedia;
   const ROOT = "data-utils-pinterest-download";
   const ICON = "M12 17.41 6.29 11.7l1.42-1.41L11 13.59V4h2v9.59l3.29-3.3 1.42 1.41L12 17.41zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z";
   const timers = new WeakMap();
@@ -99,7 +99,7 @@
       attach(link?.querySelector(".PinCard__imageWrapper"), pinIdFromUrl(link?.getAttribute("href")), "grid");
     }
     const id = pinIdFromUrl(location.href);
-    if (id) attach(document.querySelector(`[id="closeup-image-container-${id}"]`), id, "main");
+    if (id) attach(mainMediaHost(document, id), id, "main");
   };
 
   scan();
