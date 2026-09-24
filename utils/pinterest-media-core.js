@@ -39,5 +39,10 @@
     return { url, ext: ext === "jpeg" ? "jpg" : ext };
   };
 
-  globalThis.UtilsPinterestMedia = { isPinId, isAllowedMediaUrl, mediaFromProps, pinIdFromUrl };
+  const mainMediaHost = (doc, pinId) => isPinId(pinId)
+    ? doc?.querySelector(`[id="closeup-image-container-${pinId}"]`) ??
+      doc?.querySelector(`[data-test-id="closeup-video-with-visibility"][data-pin-drag-id="${pinId}"]`)
+    : null;
+
+  globalThis.UtilsPinterestMedia = { isPinId, isAllowedMediaUrl, mainMediaHost, mediaFromProps, pinIdFromUrl };
 })();
