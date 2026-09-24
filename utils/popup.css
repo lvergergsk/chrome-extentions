@@ -381,7 +381,7 @@ h1 {
 
 .tab-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 8px;
 }
@@ -390,10 +390,6 @@ h1 {
   padding: 6px 4px;
   border-radius: 8px;
   font-size: 13px;
-}
-
-.tab-actions [data-tab-action^="sort-"] {
-  grid-column: span 2;
 }
 
 .tab-actions .button:disabled {
