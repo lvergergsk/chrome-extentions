@@ -26,7 +26,6 @@
 
 body {
   width: 380px;
-  min-height: 644px;
   margin: 0;
   overflow-x: hidden;
   color: var(--text);
@@ -44,9 +43,8 @@ input {
 
 .popup {
   display: grid;
-  gap: 14px;
-  min-height: 644px;
-  padding: 20px 16px 14px;
+  gap: 8px;
+  padding: 12px;
 }
 
 .popup__header {
@@ -111,8 +109,7 @@ h1 {
 }
 
 .status-chip__dot,
-.checkin__indicator,
-.tool-status {
+.checkin__indicator {
   flex: 0 0 auto;
   border-radius: 50%;
   background: currentcolor;
@@ -148,8 +145,8 @@ h1 {
 
 .checkin {
   display: grid;
-  gap: 16px;
-  padding: 18px 16px 20px;
+  gap: 8px;
+  padding: 10px 12px;
   box-shadow: var(--shadow);
 }
 
@@ -180,8 +177,7 @@ h1 {
   min-width: 0;
 }
 
-.checkin__heading h2,
-.tools__header h2 {
+.checkin__heading h2 {
   color: var(--text);
   font-size: 15px;
   font-weight: 750;
@@ -311,7 +307,7 @@ h1 {
   min-width: 0;
   border: 1px solid var(--border);
   border-radius: 13px;
-  padding: 10px 12px;
+  padding: 6px 10px;
   background: var(--surface-soft);
 }
 
@@ -354,7 +350,7 @@ h1 {
 }
 
 .button--primary {
-  min-height: 48px;
+  min-height: 44px;
   color: #ffffff;
   background: var(--accent);
 }
@@ -380,23 +376,43 @@ h1 {
 }
 
 .tools {
-  padding: 14px 16px 10px;
+  padding: 10px 12px;
 }
 
-.tools__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.tab-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
-.tools__header > span {
-  color: var(--faint);
+.tab-actions .button {
+  padding: 6px 4px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.tab-actions [data-tab-action^="sort-"] {
+  grid-column: span 2;
+}
+
+.tab-actions .button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#tabActionStatus {
+  color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
+}
+
+#tabActionStatus:not(:empty) {
+  margin-bottom: 8px;
 }
 
 .tools__list {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   margin-top: 9px;
   padding: 0;
@@ -405,23 +421,22 @@ h1 {
 
 .tools__list li {
   display: grid;
-  min-height: 36px;
-  grid-template-columns: 28px minmax(0, 1fr) 10px;
-  gap: 10px;
+  min-height: 28px;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
 }
 
 .tool-icon {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   border-radius: 9px;
   color: var(--accent);
   background: var(--accent-soft);
   font-size: 12px;
 }
 
-.tools__list strong,
-.tools__list small {
+.tools__list strong {
   display: block;
 }
 
@@ -429,29 +444,6 @@ h1 {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.15;
-}
-
-.tools__list small {
-  margin-top: 2px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tool-status {
-  width: 8px;
-  height: 8px;
-  color: var(--success);
-}
-
-.popup__privacy {
-  color: var(--faint);
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
 }
 
 .sr-only {

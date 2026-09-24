@@ -145,7 +145,7 @@ test("native bridge reconnects after disconnect and never duplicates a live port
   const api = {
     runtime: {
       getPlatformInfo: async () => ({ os: "win" }), getManifest: () => ({ version: "test" }),
-      onStartup: event(), onInstalled: event(),
+      onStartup: event(), onInstalled: event(), onMessage: event(),
       connectNative(name) {
         assert.equal(name, NATIVE_HOST);
         const port = { onMessage: event(), onDisconnect: event(), sent: [], postMessage(message) { this.sent.push(message); } };
@@ -168,4 +168,46 @@ test("native bridge reconnects after disconnect and never duplicates a live port
   assert.equal(connections.length, 2);
   const manifest = JSON.parse(readFileSync(new URL("./manifest.json", import.meta.url)));
   for (const permission of ["nativeMessaging", "tabs", "tabGroups"]) assert.ok(manifest.permissions.includes(permission));
+});
+
+test("popup actions use the worker queue, preserve duplicates, and reject other senders", async () => {
+  const event = () => ({ listeners: [], addListener(callback) { this.listeners.push(callback); } });
+  const { api, calls, ids } = browser();
+  const popup = "chrome-extension://utils/popup.html";
+  api.runtime = {
+    id: "utils", getURL: () => popup, onMessage: event(), onStartup: event(), onInstalled: event(),
+    getPlatformInfo: async () => ({ os: "linux" }),
+  };
+  api.commands = { onCommand: event() };
+  api.alarms = { onAlarm: event() };
+  startBrowserBridge(api);
+  const receive = api.runtime.onMessage.listeners[0];
+  const sender = { id: "utils", url: popup };
+  const message = { type: "utils.tabs.action", action: "sort-url", windowId: 7 };
+  const send = (payload) => new Promise((resolve) => receive(payload, sender, resolve));
+  for (const untrusted of [{ ...sender, tab: { id: 1 } }, { ...sender, id: "other" }, { ...sender, url: "https://example.com" }]) {
+    assert.equal(receive(message, untrusted, () => assert.fail("must not respond")), undefined);
+  }
+  assert.deepEqual(calls, []);
+  assert.deepEqual(await send({ ...message, action: "close-all" }), { ok: false });
+  assert.deepEqual(await send({ ...message, windowId: -1 }), { ok: false });
+  for (const action of ["sort-url", "sort-title"]) {
+    assert.deepEqual(await send({ ...message, action }), { ok: true });
+    assert.equal(ids().length, 8);
+    assert.ok(!calls.some(([kind]) => kind === "remove"));
+  }
+  const moves = [];
+  api.tabs.query = async (query) => {
+    assert.deepEqual(query, { windowId: 7 });
+    return [tab(1, 0, { pinned: true }), tab(2, 1), tab(3, 2, { highlighted: true }), tab(4, 3)];
+  };
+  api.tabs.move = async (id, position) => moves.push([id, position.index]);
+  for (const action of ["tab-left", "tab-right", "tab-front", "tab-back"]) {
+    assert.deepEqual(await send({ ...message, action }), { ok: true });
+  }
+  assert.deepEqual(moves, [[3, 1], [3, 3], [3, 1], [3, 3]]);
+  api.tabs.move = async () => { throw new Error("tab closed"); };
+  assert.deepEqual(await send({ ...message, action: "tab-left" }), { ok: false });
+  api.tabs.move = async () => {};
+  assert.deepEqual(await send({ ...message, action: "tab-right" }), { ok: true });
 });

@@ -69,6 +69,27 @@ const initPopup = () => {
 
   elements.version.textContent = chrome.runtime.getManifest().version;
 
+  const tabButtons = [...document.querySelectorAll("[data-tab-action]")];
+  const tabStatus = document.querySelector("#tabActionStatus");
+  for (const button of tabButtons) {
+    button.addEventListener("click", async () => {
+      tabButtons.forEach((item) => { item.disabled = true; });
+      tabStatus.textContent = "处理中…";
+      try {
+        const { id: windowId } = await chrome.windows.getCurrent();
+        const response = await chrome.runtime.sendMessage({
+          type: "utils.tabs.action", action: button.dataset.tabAction, windowId,
+        });
+        if (!response?.ok) throw new Error("tab-action-failed");
+        tabStatus.textContent = "已完成";
+      } catch {
+        tabStatus.textContent = "操作失败，请重试";
+      } finally {
+        tabButtons.forEach((item) => { item.disabled = false; });
+      }
+    });
+  }
+
   elements.toggle.addEventListener("change", async () => {
     const enabled = elements.toggle.checked;
     elements.toggle.disabled = true;
