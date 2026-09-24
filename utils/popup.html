@@ -75,32 +75,33 @@
         <button id="checkinButton" class="button button--primary" type="button" disabled>正在读取…</button>
       </section>
 
-      <section class="card tools" aria-labelledby="toolsTitle">
-        <div class="tools__header">
-          <h2 id="toolsTitle">其他工具</h2>
-          <span>常驻开启</span>
+      <section class="card tools" aria-label="标签页与其他工具">
+        <div class="tab-actions" role="group" aria-label="标签页操作">
+          <button class="button button--secondary" type="button" data-tab-action="sort-url">按网址排序</button>
+          <button class="button button--secondary" type="button" data-tab-action="sort-title">按标题排序</button>
+          <button class="button button--secondary" type="button" data-tab-action="tab-front">移到最前</button>
+          <button class="button button--secondary" type="button" data-tab-action="tab-left">左移</button>
+          <button class="button button--secondary" type="button" data-tab-action="tab-right">右移</button>
+          <button class="button button--secondary" type="button" data-tab-action="tab-back">移到最后</button>
         </div>
+        <p id="tabActionStatus" role="status" aria-live="polite"></p>
         <ul class="tools__list">
           <li>
             <span class="tool-icon" aria-hidden="true">X</span>
-            <span><strong>X 媒体</strong><small>下载图片与视频</small></span>
-            <span class="tool-status"><span class="sr-only">运行正常</span></span>
+            <span><strong>X 媒体</strong></span>
           </li>
           <li>
             <span class="tool-icon" aria-hidden="true">P</span>
-            <span><strong>pixiv</strong><small>原图下载并自动收藏</small></span>
-            <span class="tool-status"><span class="sr-only">运行正常</span></span>
+            <span><strong>pixiv</strong></span>
           </li>
           <li>
             <span class="tool-icon" aria-hidden="true">W</span>
-            <span><strong>网页清理</strong><small>广告拦截与页面清理</small></span>
-            <span class="tool-status"><span class="sr-only">运行正常</span></span>
+            <span><strong>网页清理</strong></span>
           </li>
         </ul>
       </section>
 
       <button id="reloadButton" class="button button--secondary" type="button">重新加载扩展</button>
-      <p class="popup__privacy">本地运行 · 不保存账号信息</p>
     </main>
     <script type="module" src="popup.js"></script>
   </body>

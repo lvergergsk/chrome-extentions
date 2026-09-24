@@ -100,8 +100,8 @@ export function planTabMoves(tabs, command, start, end) {
   ]);
 }
 
-export async function moveHighlightedTabs(command, api = chrome) {
-  const tabs = await api.tabs.query({ currentWindow: true });
+export async function moveHighlightedTabs(command, api = chrome, windowId) {
+  const tabs = await api.tabs.query(windowId === undefined ? { currentWindow: true } : { windowId });
   const pinnedCount = tabs.filter((tab) => tab.pinned).length;
   for (const pinned of [true, false]) {
     const selected = tabs.filter((tab) => tab.highlighted && Boolean(tab.pinned) === pinned);

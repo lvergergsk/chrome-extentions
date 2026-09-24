@@ -96,6 +96,21 @@ export function startBrowserBridge(api = chrome) {
     if (!command.startsWith("tab-")) return;
     queueTabWork(() => moveHighlightedTabs(command, api)).catch(() => console.warn("Tab move failed."));
   });
+  api.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type !== "utils.tabs.action") return;
+    if (sender.id !== api.runtime.id || sender.tab || sender.url !== api.runtime.getURL("popup.html")) return;
+    const { action, windowId } = message;
+    if (!["sort-url", "sort-title", "tab-left", "tab-right", "tab-front", "tab-back"].includes(action)
+        || !Number.isSafeInteger(windowId) || windowId < 0) {
+      sendResponse({ ok: false });
+      return;
+    }
+    queueTabWork(() => action.startsWith("sort-")
+      ? organizeTabs({ windowId, sortBy: action.slice(5), apply: true, dedupe: false }, api)
+      : moveHighlightedTabs(action, api, windowId))
+      .then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    return true;
+  });
   api.runtime.onStartup.addListener(connect);
   api.runtime.onInstalled.addListener(connect);
   api.alarms.onAlarm.addListener((alarm) => { if (alarm.name === RECONNECT_ALARM) connect(); });
