@@ -1,6 +1,7 @@
 import "./x-media-core.js";
 import "./pixiv-media-core.js";
 import "./youtube-media-core.js";
+import "./pinterest-media-core.js";
 import {
   ALARM_SCHEDULES,
   CHECKIN_STORAGE_KEY,
@@ -43,6 +44,8 @@ const {
   isAllowedMediaUrl: isAllowedYouTubeMediaUrl,
   isVideoId: isYouTubeVideoId,
 } = globalThis.UtilsYouTubeMedia;
+
+const { isPinId, isAllowedMediaUrl: isAllowedPinterestMediaUrl } = globalThis.UtilsPinterestMedia;
 
 // A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
 const PIXIV_FETCH_CONCURRENCY = 3;
@@ -249,6 +252,24 @@ const downloadYouTube = async ({ videoId, title, url, mimeType }) => {
       saveAs: false,
     });
     return { ok: true, downloadId };
+  } catch (error) {
+    return { ok: false, error: String(error?.message ?? error) };
+  }
+};
+
+const downloadPinterest = async ({ pinId, url }) => {
+  if (!isPinId(pinId) || !isAllowedPinterestMediaUrl(url)) {
+    return { ok: false, error: "bad-request" };
+  }
+  const ext = new URL(url).pathname.split(".").pop().toLowerCase();
+  try {
+    const downloadId = await chrome.downloads.download({
+      url,
+      filename: `utils-pinterest/pinterest-${pinId}.${ext === "jpeg" ? "jpg" : ext}`,
+      conflictAction: "uniquify",
+      saveAs: false,
+    });
+    return { ...(await settleDownload(downloadId)), downloadId };
   } catch (error) {
     return { ok: false, error: String(error?.message ?? error) };
   }
@@ -484,6 +505,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message?.type === "utils.youtube.download") {
     downloadYouTube(message).then(sendResponse);
+    return true;
+  }
+  if (message?.type === "utils.pinterest.download") {
+    downloadPinterest(message).then(sendResponse);
     return true;
   }
   if (message?.type === "utils.x.like") {
