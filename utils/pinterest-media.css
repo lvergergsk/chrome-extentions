@@ -1,29 +1,41 @@
 .utils-pinterest-download {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  bottom: 4px;
+  left: 4px;
   z-index: 8;
   font-family: inherit;
 }
 
 .utils-pinterest-download[data-utils-pinterest-download="main"] {
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
+  bottom: auto;
+  left: auto;
 }
 
 .utils-pinterest-download button {
+  position: relative;
   display: grid;
   place-items: center;
   width: 44px;
   height: 44px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
   color: white;
-  background: rgba(0, 0, 0, 0.7);
+  background: transparent;
   cursor: pointer;
   opacity: 0.75;
 }
+
+.utils-pinterest-download button::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.utils-pinterest-download[data-utils-pinterest-download="main"] button::before { inset: 4px; }
 
 .utils-pinterest-download button:hover,
 .utils-pinterest-download button:focus-visible,
@@ -37,9 +49,9 @@
 }
 
 .utils-pinterest-download button:disabled { cursor: progress; }
-.utils-pinterest-download[data-state="ok"] button { background: rgb(0, 122, 82); }
-.utils-pinterest-download[data-state="error"] button { background: rgb(140, 20, 28); }
-.utils-pinterest-download svg { width: 22px; height: 22px; fill: currentColor; }
+.utils-pinterest-download[data-state="ok"] button::before { background: rgb(0, 122, 82); }
+.utils-pinterest-download[data-state="error"] button::before { background: rgb(140, 20, 28); }
+.utils-pinterest-download svg { position: relative; width: 18px; height: 18px; fill: currentColor; }
 
 .utils-pinterest-download span {
   position: absolute;
@@ -57,3 +69,10 @@
 }
 
 .utils-pinterest-download span:empty { display: none; }
+
+.utils-pinterest-download[data-utils-pinterest-download="grid"] span {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+}
