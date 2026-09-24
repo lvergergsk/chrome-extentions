@@ -1,6 +1,6 @@
 {
   "name": "utils",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "private": true,
   "description": "Personal Chrome extension: HoYoLAB check-in, media download, and ad blocking.",
   "type": "module",

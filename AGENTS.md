@@ -9,3 +9,6 @@
 - Diagnose shortcut failures from actual Chrome assignments. Manifest
   `suggested_key` values do not prove Chrome assigned the shortcuts; another
   extension can own them, and reload does not transfer ownership.
+  `gg browser status` reports live `chrome.commands.getAll()` bindings; an empty
+  shortcut means unassigned. Prefer this to profile files, which can lag behind
+  the browser's in-memory settings.
