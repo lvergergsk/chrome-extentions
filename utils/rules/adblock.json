@@ -81,7 +81,9 @@
         "sukebei.nyaa.si",
         "nyaa.si",
         "kemono.cr",
-        "www.kemono.cr"
+        "www.kemono.cr",
+        "pawchive.pw",
+        "www.pawchive.pw"
       ]
     }
   },
@@ -820,6 +822,20 @@
       "urlFilter": "||dns-finder.com^",
       "initiatorDomains": [
         "gamebanana.com"
+      ]
+    }
+  },
+  {
+    "id": 72,
+    "priority": 1,
+    "action": {
+      "type": "block"
+    },
+    "condition": {
+      "urlFilter": "||phonydepth.com^",
+      "initiatorDomains": [
+        "pawchive.pw",
+        "www.pawchive.pw"
       ]
     }
   }
