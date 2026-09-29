@@ -2,6 +2,8 @@ import "./x-media-core.js";
 import "./pixiv-media-core.js";
 import "./youtube-media-core.js";
 import "./pinterest-media-core.js";
+import "./pawchive-core.js";
+import { ALARM as PAWCHIVE_ALARM, createPawchiveService } from "./pawchive-downloads.js";
 import {
   ALARM_SCHEDULES,
   CHECKIN_STORAGE_KEY,
@@ -46,6 +48,15 @@ const {
 } = globalThis.UtilsYouTubeMedia;
 
 const { isPinId, isAllowedMediaUrl: isAllowedPinterestMediaUrl } = globalThis.UtilsPinterestMedia;
+const pawchive = createPawchiveService();
+
+void pawchive.init().catch(() => console.warn("[Pawchive] failed to restore downloads"));
+chrome.downloads.onChanged.addListener((delta) => {
+  void pawchive.changed(delta).catch(() => console.warn("[Pawchive] failed to update download"));
+});
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === PAWCHIVE_ALARM) void pawchive.reconcile().then(() => pawchive.pump()).catch(() => {});
+});
 
 // A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
 const PIXIV_FETCH_CONCURRENCY = 3;
@@ -430,6 +441,26 @@ const likeTweet = async (tweetId) => {
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (typeof message?.type === "string" && message.type.startsWith("utils.pawchive.")) {
+    const post = { platform: message.platform, authorId: message.authorId, postId: message.postId };
+    if (!globalThis.UtilsPawchive.validMessage(message, sender, chrome.runtime.id)) {
+      sendResponse({ ok: false, error: "bad-request" });
+      return;
+    }
+    const action = message.type.slice("utils.pawchive.".length);
+    const actions = {
+      status: () => pawchive.snapshot(post),
+      inspect: () => pawchive.inspect(message.posts),
+      preview: () => pawchive.preview(message.posts),
+      submit: () => pawchive.submit(message.posts),
+      retry: () => pawchive.retry(post),
+      stop: () => pawchive.stop(post),
+    };
+    if (!actions[action]) { sendResponse({ ok: false, error: "bad-request" }); return; }
+    Promise.resolve().then(actions[action]).then((result) => sendResponse({ ok: true, ...result }))
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message ?? error) }));
+    return true;
+  }
   if (message?.type === "utils.reload") {
     const tabId = sender.tab?.id;
     if (tabId != null) {
