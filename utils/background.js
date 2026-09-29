@@ -49,7 +49,6 @@ const {
 
 const { isPinId, isAllowedMediaUrl: isAllowedPinterestMediaUrl } = globalThis.UtilsPinterestMedia;
 const pawchive = createPawchiveService();
-const pawchivePage = (sender) => sender.tab?.id != null ? globalThis.UtilsPawchive.parsePageUrl(sender.url) : null;
 
 void pawchive.init().catch(() => console.warn("[Pawchive] failed to restore downloads"));
 chrome.downloads.onChanged.addListener((delta) => {
@@ -443,29 +442,17 @@ const likeTweet = async (tweetId) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (typeof message?.type === "string" && message.type.startsWith("utils.pawchive.")) {
-    const page = pawchivePage(sender);
     const post = { platform: message.platform, authorId: message.authorId, postId: message.postId };
-    if (!page || post.platform !== page.platform || post.authorId !== page.authorId ||
-        (page.postId && post.postId !== page.postId) ||
-        (!["utils.pawchive.submit", "utils.pawchive.preview"].includes(message.type) && post.postId != null && !globalThis.UtilsPawchive.parsePageUrl(
-          `https://pawchive.pw/${post.platform}/user/${post.authorId}/post/${post.postId}`)?.postId) ||
-        (!page.postId && post.postId && !["utils.pawchive.status", "utils.pawchive.retry", "utils.pawchive.stop"].includes(message.type))) {
+    if (!globalThis.UtilsPawchive.validMessage(message, sender, chrome.runtime.id)) {
       sendResponse({ ok: false, error: "bad-request" });
       return;
     }
     const action = message.type.slice("utils.pawchive.".length);
     const actions = {
       status: () => pawchive.snapshot(post),
-      preview: () => {
-        if (!Array.isArray(message.posts) || message.posts.some((item) => item.platform !== page.platform ||
-            item.authorId !== page.authorId || (page.postId && item.postId !== page.postId))) throw new Error("bad-request");
-        return pawchive.preview(message.posts);
-      },
-      submit: () => {
-        if (!Array.isArray(message.posts) || message.posts.some((item) => item.platform !== page.platform ||
-            item.authorId !== page.authorId || (page.postId && item.postId !== page.postId))) throw new Error("bad-request");
-        return pawchive.submit(message.posts);
-      },
+      inspect: () => pawchive.inspect(message.posts),
+      preview: () => pawchive.preview(message.posts),
+      submit: () => pawchive.submit(message.posts),
       retry: () => pawchive.retry(post),
       stop: () => pawchive.stop(post),
     };

@@ -90,6 +90,13 @@
   },
   "content_scripts": [
     {
+      "matches": ["https://pawchive.pw/*"],
+      "js": ["pawchive-core.js", "pawchive-media.js"],
+      "css": ["pawchive-media.css"],
+      "world": "ISOLATED",
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://*.pinterest.com/*"],
       "js": ["pinterest-media-core.js", "pinterest-media.js"],
       "css": ["pinterest-media.css"],
