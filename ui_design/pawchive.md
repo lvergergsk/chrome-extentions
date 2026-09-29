@@ -56,4 +56,6 @@ node scripts/pawchive-qa.mjs
 
 1000px 桌面、768px 平板和 375px 窄屏检查覆盖对话框、长作者名、路径换行、44px 控件、可见焦点、取消后的焦点恢复和页面宽度。[桌面实测截图](pawchive-qa-desktop.png)、[窄屏实测截图](pawchive-qa-mobile.png)。
 
+真实页面验证：Fanbox 作者 `37736420` 的帖子 `12637115` 下载了视频与封面共 2 项。下载中关闭帖子并重载扩展后，作者页显示“已完成 2 · 失败 0”，帖子保留勾选。作者页实测桌面和 375px 控件均可用。首次识别详情页附件只更新帖子按钮，任务摘要在提交后出现。
+
 Chrome 行为依据：[Downloads API](https://developer.chrome.com/docs/extensions/reference/api/downloads)、[扩展后台生命周期](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)。

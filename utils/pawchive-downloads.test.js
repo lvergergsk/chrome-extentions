@@ -66,10 +66,12 @@ test("observation and preview start no downloads and first submission chooses th
   const env = fake(), service = createPawchiveService(env.api);
   await service.inspect([one()]);
   assert.equal((await service.snapshot(one())).status, "missing");
+  assert.equal((await service.snapshot(one())).requested, false);
   assert.equal((await service.snapshot(author)).status, "unknown");
   assert.deepEqual(await service.preview([one(), one("789")]), { posts: 2, pending: 1, duplicate: 1, unavailable: 0 });
   assert.equal(env.calls.length, 0); // A cancelled confirmation stops here.
   await service.submit([one("789")]);
+  assert.equal((await service.snapshot(one("789"))).requested, true);
   assert.ok(env.calls[0].filename.includes("/789/"));
 });
 

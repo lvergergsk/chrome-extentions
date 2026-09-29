@@ -109,7 +109,7 @@
       if (scope !== page) return;
       for (const view of views.values()) setPostState(view, result.postStates[view.scope.postId] ?? { status: "unknown" });
       if (collection || dialog) return;
-      if (result.status === "unknown") { setPanel("", ""); return; }
+      if (result.status === "unknown" || !result.requested) { setPanel("", ""); return; }
       const pending = result.active + result.queued;
       const title = result.status === "stopped" ? "已停止下载" : pending ? result.active ? "正在下载" : "排队中" : result.missing ? "有待下载附件" : "下载结束";
       const detail = `已完成 ${result.completed} · 失败 ${result.failed}` +

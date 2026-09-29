@@ -130,6 +130,7 @@ export function createPawchiveService(api = chrome) {
     const state = await lookup();
     const records = selected(state, scope);
     return { ...summarize(state, scope.postId ? records : records.filter(([, record]) => record.requested)),
+      requested: records.some(([, record]) => record.requested),
       postStates: Object.fromEntries(records.map(([key, record]) => [key.split("/")[2], summarize(state, [[key, record]])])) };
   };
 
