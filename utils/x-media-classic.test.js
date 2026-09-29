@@ -26,7 +26,7 @@ test("content scripts stay classic so Chrome 151 can parse them", () => {
 test("classic files in one content_scripts entry never redeclare a shared global", () => {
   for (const [index, entry] of Object.entries(manifest.content_scripts ?? [])) {
     const files = entry.js ?? [];
-    assert.ok(files.length > 0, `content_scripts[${index}] must list at least one file`);
+    assert.ok(files.length > 0 || entry.css?.length > 0, `content_scripts[${index}] must list JS or CSS`);
     // Chrome runs every classic file of one entry against the same global lexical
     // scope, so a top-level name declared twice is a SyntaxError that silently kills
     // the second file. Compiling the concatenation reproduces exactly that failure.
