@@ -40,6 +40,7 @@
       message.posts.length <= 10000 && message.posts.every((post) => validIdentity(post) &&
         post.platform === page.platform && post.authorId === page.authorId &&
         (!message.postId || post.postId === message.postId));
+    if (action === "watch") return !page.postId && typeof message.enabled === "boolean";
     return ["status", "retry", "stop"].includes(action);
   };
 
@@ -103,11 +104,13 @@
     return { posts: [...posts], pages: [...pages], count: count ? Number(count.replaceAll(",", "")) : null };
   };
 
-  const collectAuthor = async (author, load, { signal, progress = () => {} } = {}) => {
+  // `known` post IDs turn this into an update check: pages list newest first, so stop at the first page with nothing new.
+  const authorPosts = async (author, load, { signal, progress = () => {}, known } = {}) => {
     const root = `${origin}/${author.platform}/user/${author.authorId}`;
     if (!validIdentity(author, false)) throw new Error("bad-author");
     const pending = [root], seen = new Set(), links = new Set();
-    let expected = null;
+    const isKnown = (url) => known?.has(parsePageUrl(url).postId);
+    let expected = null, caughtUp = false;
     while (pending.length) {
       if (signal?.aborted) throw new Error("cancelled");
       const page = pending.shift();
@@ -121,11 +124,15 @@
         expected = found.count;
       }
       found.posts.forEach((url) => links.add(url));
+      if (known && found.posts.every(isKnown)) { caughtUp = true; break; }
       found.pages.forEach((url) => { if (!seen.has(url) && !pending.includes(url)) pending.push(url); });
       progress({ phase: "pages", done: seen.size, total: seen.size + pending.length, posts: links.size });
     }
-    if (expected != null && links.size !== expected) throw new Error("pages-incomplete");
-    const urls = [...links];
+    if (!caughtUp && expected != null && links.size !== expected) throw new Error("pages-incomplete");
+    return [...links].filter((url) => !isKnown(url));
+  };
+
+  const loadPosts = async (urls, load, { signal, progress = () => {} } = {}) => {
     const posts = new Array(urls.length), unavailable = [];
     let cursor = 0, done = 0;
     await Promise.all(Array.from({ length: Math.min(3, urls.length) }, async () => {
@@ -144,8 +151,14 @@
         progress({ phase: "posts", done: ++done, total: urls.length, unavailable: unavailable.length });
       }
     }));
-    return { posts: posts.filter(Boolean), unavailable, count: urls.length };
+    return { posts: posts.filter(Boolean), unavailable };
   };
 
-  globalThis.UtilsPawchive = { parsePageUrl, validIdentity, validMessage, mediaKey, safeName, filename, extractPost, authorLinks, collectAuthor };
+  const collectAuthor = async (author, load, options = {}) => {
+    const urls = await authorPosts(author, load, options);
+    return { ...await loadPosts(urls, load, options), count: urls.length };
+  };
+
+  globalThis.UtilsPawchive = { parsePageUrl, validIdentity, validMessage, mediaKey, safeName, filename, extractPost, authorLinks,
+    authorPosts, loadPosts, collectAuthor };
 })();

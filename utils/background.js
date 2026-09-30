@@ -4,6 +4,7 @@ import "./youtube-media-core.js";
 import "./pinterest-media-core.js";
 import "./pawchive-core.js";
 import { ALARM as PAWCHIVE_ALARM, createPawchiveService } from "./pawchive-downloads.js";
+import { WATCH_ALARM as PAWCHIVE_WATCH_ALARM, createPawchiveWatch, offscreenParse } from "./pawchive-watch.js";
 import {
   ALARM_SCHEDULES,
   CHECKIN_STORAGE_KEY,
@@ -49,6 +50,8 @@ const {
 
 const { isPinId, isAllowedMediaUrl: isAllowedPinterestMediaUrl } = globalThis.UtilsPinterestMedia;
 const pawchive = createPawchiveService();
+const pawchiveWatch = createPawchiveWatch(pawchive, offscreenParse());
+void pawchiveWatch.schedule().catch(() => console.warn("[Pawchive] failed to schedule watch list"));
 
 void pawchive.init().catch(() => console.warn("[Pawchive] failed to restore downloads"));
 chrome.downloads.onChanged.addListener((delta) => {
@@ -56,6 +59,7 @@ chrome.downloads.onChanged.addListener((delta) => {
 });
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === PAWCHIVE_ALARM) void pawchive.reconcile().then(() => pawchive.pump()).catch(() => {});
+  if (alarm.name === PAWCHIVE_WATCH_ALARM) void pawchiveWatch.run().catch(() => console.warn("[Pawchive] watch check failed"));
 });
 
 // A manga can run to dozens of pages; pulling them all at once would hammer pixiv.
@@ -449,7 +453,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     const action = message.type.slice("utils.pawchive.".length);
     const actions = {
-      status: () => pawchive.snapshot(post),
+      status: async () => ({ ...await pawchive.snapshot(post), ...await pawchiveWatch.status(post) }),
+      watch: () => pawchiveWatch.setWatched(post, message.enabled),
       inspect: () => pawchive.inspect(message.posts),
       preview: () => pawchive.preview(message.posts),
       submit: () => pawchive.submit(message.posts),

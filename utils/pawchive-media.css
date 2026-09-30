@@ -23,6 +23,7 @@
 .utils-pawchive-button:disabled { opacity: .6; cursor: default; }
 .utils-pawchive-button svg { width: 20px; height: 20px; flex: none; fill: currentColor; }
 .utils-pawchive-all { margin: 4px; }
+.utils-pawchive-all[aria-pressed="true"] { background: #007a52; }
 .utils-pawchive-card { position: relative; }
 .utils-pawchive-post {
   position: absolute;
