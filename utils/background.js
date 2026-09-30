@@ -49,6 +49,8 @@ const {
 } = globalThis.UtilsYouTubeMedia;
 
 const { isPinId, isAllowedMediaUrl: isAllowedPinterestMediaUrl } = globalThis.UtilsPinterestMedia;
+// Content scripts only read the Pawchive revision tick; session storage holds nothing else.
+void chrome.storage.session.setAccessLevel({ accessLevel: "TRUSTED_AND_UNTRUSTED_CONTEXTS" }).catch(() => {});
 const pawchive = createPawchiveService();
 const pawchiveWatch = createPawchiveWatch(pawchive, offscreenParse());
 void pawchiveWatch.schedule().catch(() => console.warn("[Pawchive] failed to schedule watch list"));

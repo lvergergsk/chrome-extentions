@@ -382,9 +382,7 @@
     clearTimeout(scanTimer);
     scanTimer = setTimeout(() => { scan(); scheduleRefresh(); }, 100);
   }).observe(document.documentElement, { childList: true, subtree: true });
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && (changes.pawchiveDownloadsV1 || changes.pawchiveWatchV1)) scheduleRefresh();
-  });
+  chrome.storage.session.onChanged.addListener((changes) => { if (changes.pawchiveRevision) scheduleRefresh(); });
   window.addEventListener("popstate", () => { scan(); scheduleRefresh(); });
   window.addEventListener("pagehide", () => { pageAbort?.abort(); collection?.abort(); });
   window.addEventListener("pageshow", (event) => {
