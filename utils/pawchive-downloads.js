@@ -38,11 +38,12 @@ const summarize = (state, records) => {
     !state.files[key] || state.files[key].status === "missing")).map(([key]) => key.split("/")[2]);
   const unavailablePosts = records.filter(([, record]) => record.unavailable).map(([key]) => key.split("/")[2]);
   const unavailable = unavailablePosts.length;
+  const lowres = records.filter(([, record]) => record.lowres).length;
   const stopped = records.length > 0 && records.every(([, record]) => record.stopped);
   const status = !records.length ? "unknown" : completed === files.length && files.length && !unavailable ? "complete" :
     stopped ? "stopped" : active ? "active" : queued ? "queued" : failed ? "failed" :
     unavailable ? "unavailable" : "missing";
-  return { status, total: files.length, completed, failed, active, queued, missing, missingPosts, unavailable, unavailablePosts,
+  return { status, total: files.length, completed, failed, active, queued, missing, missingPosts, unavailable, unavailablePosts, lowres,
     unavailableReason: records.length === 1 ? records[0][1].unavailableReason : null };
 };
 
@@ -60,6 +61,7 @@ const catalog = (state, posts) => {
     state.posts[key] = { ...previous,
       files: post.unavailable && !keys.length && previous ? previous.files : keys,
       unavailable: !!post.unavailable || !keys.length,
+      lowres: !!post.lowres,
       unavailableReason: ["unarchived", "unsupported", "fetch-failed"].includes(post.unavailableReason) ? post.unavailableReason : !keys.length ? "unarchived" : null };
   }
 };
@@ -296,8 +298,9 @@ export function createPawchiveService(api = chrome) {
   const requested = async (author) => {
     await init();
     await serial;
-    // Posts whose page never loaded stay open for the next watch check.
-    return selected(await lookup(), author, true).filter(([, record]) => record.unavailableReason !== "fetch-failed")
+    // Only posts with every original count; unloaded, unarchived and thumbnail-only posts are checked again.
+    // ponytail: those posts are refetched on every watch check; keep a per-post check time if that gets slow.
+    return selected(await lookup(), author, true).filter(([, record]) => !record.unavailable && !record.lowres)
       .map(([key]) => key.split("/")[2]);
   };
   return { init, snapshot, inspect, preview, submit, retry, stop, changed, reconcile, pump, requested };
