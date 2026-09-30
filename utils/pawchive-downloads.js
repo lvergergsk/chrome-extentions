@@ -3,6 +3,7 @@ import "./pawchive-core.js";
 const { filename, mediaKey, validIdentity } = globalThis.UtilsPawchive;
 export const STORAGE_KEY = "pawchiveDownloadsV1";
 export const ALARM = "pawchive-downloads";
+export const REVISION_KEY = "pawchiveRevision";
 const empty = () => ({ posts: {}, files: {}, initialized: false });
 const postKey = (post) => `${post.platform}/${post.authorId}/${post.postId}`;
 const running = (file) => ["active", "launching", "queued"].includes(file.status);
@@ -66,6 +67,9 @@ const catalog = (state, posts) => {
   }
 };
 
+// Pages listen to this tiny session key, not the ledger: a local-storage listener is sent the whole ledger, twice, on every write.
+export const touch = (api) => api.storage.session?.set({ [REVISION_KEY]: Date.now() });
+
 const settle = (file, item) => {
   if (file.status === "complete") return;
   file.downloadId = item.id;
@@ -84,6 +88,7 @@ export function createPawchiveService(api = chrome) {
       const state = await lookup();
       const value = await fn(state);
       await api.storage.local.set({ [STORAGE_KEY]: state });
+      await touch(api);
       return value;
     });
     serial = result.catch(() => {});

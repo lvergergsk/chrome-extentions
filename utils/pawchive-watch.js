@@ -1,3 +1,5 @@
+import { touch } from "./pawchive-downloads.js";
+
 export const WATCH_KEY = "pawchiveWatchV1";
 export const WATCH_ALARM = "pawchive-watch";
 const CHUNK = 20;
@@ -28,6 +30,7 @@ export function createPawchiveWatch(service, parse, api = chrome) {
       const state = await read();
       const value = fn(state);
       await api.storage.local.set({ [WATCH_KEY]: state });
+      await touch(api);
       return value;
     });
     writes = result.catch(() => {});

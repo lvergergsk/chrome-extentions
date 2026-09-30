@@ -251,3 +251,10 @@ test("stop and alarm reconciliation during an in-flight launch do not orphan or 
   assert.equal(env.calls.length, 1);
   assert.equal((await service.snapshot(one())).status, "stopped");
 });
+
+test("every ledger write bumps the small session revision that pages listen to", async () => {
+  const env = fake(), service = createPawchiveService(env.api), ticks = [];
+  env.api.storage.session = { set: async (values) => ticks.push(values.pawchiveRevision) };
+  await service.inspect([one()]);
+  assert.ok(ticks.length > 0 && ticks.every(Number.isFinite));
+});
