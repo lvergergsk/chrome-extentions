@@ -185,6 +185,12 @@ test("invalid batch is rejected atomically including missing identifiers and URL
   assert.deepEqual(env.data[STORAGE_KEY].files, {});
 });
 
+test("posts whose page failed to load are not reported as requested", async () => {
+  const env = fake(), service = createPawchiveService(env.api);
+  await service.submit([one("1", []), { ...one("2", []), unavailable: true, unavailableReason: "fetch-failed" }]);
+  assert.deepEqual(await service.requested(author), ["1"]);
+});
+
 test("stop preserves other posts sharing the file; author stop cancels the last reference", async () => {
   const env = fake(), service = createPawchiveService(env.api);
   await service.submit([one(), one("789")]);
