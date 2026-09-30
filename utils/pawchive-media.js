@@ -3,7 +3,7 @@
   const DOWNLOAD = "M12 17.41 6.29 11.7l1.42-1.41L11 13.59V4h2v9.59l3.29-3.3 1.42 1.41L12 17.41zM21 15l-.02 3.51c0 1.38-1.12 2.49-2.5 2.49H5.5C4.11 21 3 19.88 3 18.5V15h2v3.5c0 .28.22.5.5.5h12.98c.28 0 .5-.22.5-.5L19 15h2z";
   const CHECK = "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z";
   const views = new Map(), postCache = new Map(), fetchQueue = [];
-  let page, pageKey, pageAbort, collection, dialog, panel, allButton, authorName = "", activeFetches = 0, refreshTimer;
+  let page, pageKey, pageAbort, collection, dialog, panel, allButton, watchButton, authorName = "", activeFetches = 0, refreshTimer;
 
   const node = (tag, className, text) => {
     const element = document.createElement(tag);
@@ -100,6 +100,18 @@
     panel.progress.hidden = !progress;
     if (progress) { panel.progress.max = Math.max(1, progress.total); panel.progress.value = progress.done; }
   };
+  const setWatch = (watch) => {
+    if (!watchButton?.isConnected) return;
+    watchButton.setAttribute("aria-pressed", String(!!watch));
+    text(watchButton.querySelector("span"), watch ? "已关注" : "关注更新");
+    watchButton.title = !watch ? "每天自动下载该作者的新帖子" : !watch.checkedAt ? "每天自动下载新帖子 · 正在首次检查" :
+      `每天自动下载新帖子 · 上次检查 ${new Date(watch.checkedAt).toLocaleString()}` +
+      (watch.error ? " 失败，明天重试" : ` · 新帖子 ${watch.found}${watch.failed ? ` · 读取失败 ${watch.failed}` : ""}`);
+  };
+  const toggleWatch = async () => {
+    try { await send("watch", page, { enabled: watchButton.getAttribute("aria-pressed") !== "true" }); await refresh(); }
+    catch { failPanel(); }
+  };
   const failPanel = () => setPanel("无法连接下载后台", "请刷新页面后重试。", { label: "重试", run: () => void refresh() });
   const refresh = async () => {
     const scope = page;
@@ -108,6 +120,7 @@
       const result = await send("status", scope);
       if (scope !== page) return;
       for (const view of views.values()) setPostState(view, result.postStates[view.scope.postId] ?? { status: "unknown" });
+      setWatch(result.watch);
       if (collection || dialog) return;
       if (result.status === "unknown" || !result.requested) { setPanel("", ""); return; }
       const pending = result.active + result.queued;
@@ -314,8 +327,10 @@
       views.clear();
       visible.disconnect();
       allButton?.remove();
+      watchButton?.remove();
       panel?.root.remove();
       allButton = null;
+      watchButton = null;
       panel = null;
       page = scope;
       pageKey = key;
@@ -349,6 +364,12 @@
         allButton.classList.add("utils-pawchive-all");
         (header.querySelector(".user-header__actions") ?? header).append(allButton);
       }
+      if (!watchButton?.isConnected) {
+        watchButton = button("关注更新", toggleWatch);
+        watchButton.classList.add("utils-pawchive-all");
+        watchButton.setAttribute("aria-pressed", "false");
+        allButton.after(watchButton);
+      }
       for (const card of document.querySelectorAll(".post-card[data-service][data-user][data-id]")) {
         const id = parsePageUrl(card.querySelector("a[href]")?.href);
         if (id?.postId && id.platform === scope.platform && id.authorId === scope.authorId) attachPost(card, id);
@@ -362,7 +383,7 @@
     scanTimer = setTimeout(() => { scan(); scheduleRefresh(); }, 100);
   }).observe(document.documentElement, { childList: true, subtree: true });
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.pawchiveDownloadsV1) scheduleRefresh();
+    if (area === "local" && (changes.pawchiveDownloadsV1 || changes.pawchiveWatchV1)) scheduleRefresh();
   });
   window.addEventListener("popstate", () => { scan(); scheduleRefresh(); });
   window.addEventListener("pagehide", () => { pageAbort?.abort(); collection?.abort(); });

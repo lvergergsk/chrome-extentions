@@ -65,6 +65,18 @@ test("rejects incomplete pagination, login pages, changing counts and respects c
   await assert.rejects(collectAuthor(author, async () => list([]), { signal: controller.signal }), /cancelled/);
 });
 
+test("known posts stop paging at the first page with nothing new and are not reloaded", async () => {
+  const calls = [];
+  const pages = new Map([
+    [base, list([link(`${base}?o=50`), link(`${base}/post/9`, true), link(`${base}/post/8`, true)], 6)],
+    [`${base}?o=50`, list([link(`${base}?o=100`), link(`${base}/post/7`, true), link(`${base}/post/6`, true)], 6)],
+  ]);
+  const urls = await globalThis.UtilsPawchive.authorPosts(author, async (url) => { calls.push(url); return pages.get(url); },
+    { known: new Set(["8", "7", "6"]) });
+  assert.deepEqual(urls, [`${base}/post/9`]);
+  assert.deepEqual(calls, [base, `${base}?o=50`]);
+});
+
 test("a post with no archive or an unsupported attachment never claims all files were identified", () => {
   assert.equal(extractPost(detail([]), post).unavailable, true);
   const partial = extractPost(detail([file, "https://img.pawchive.pw/thumbnail/test.jpg"]), post);

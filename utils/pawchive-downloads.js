@@ -293,5 +293,10 @@ export function createPawchiveService(api = chrome) {
     });
     await pump();
   };
-  return { init, snapshot, inspect, preview, submit, retry, stop, changed, reconcile, pump };
+  const requested = async (author) => {
+    await init();
+    await serial;
+    return selected(await lookup(), author, true).map(([key]) => key.split("/")[2]);
+  };
+  return { init, snapshot, inspect, preview, submit, retry, stop, changed, reconcile, pump, requested };
 }
