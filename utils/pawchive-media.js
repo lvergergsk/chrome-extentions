@@ -77,7 +77,7 @@
     if (view.busy || !view.root.isConnected) return;
     view.state = state;
     const labels = {
-      complete: "已下载", unavailable: state.unavailableReason === "unarchived" ? "站点未归档" :
+      complete: state.lowres ? "已下载缩略图，原图未归档" : "已下载", unavailable: state.unavailableReason === "unarchived" ? "站点未归档" :
         state.unavailableReason === "unsupported" ? "部分附件无法获取" : "无法获取帖子，点击重试", failed: `失败 ${state.failed} 项，点击重试`,
       active: `下载中 ${state.completed}/${state.total}`, queued: "排队中", stopped: "已停止，点击重试",
     };
@@ -126,7 +126,7 @@
       const pending = result.active + result.queued;
       const title = result.status === "stopped" ? "已停止下载" : pending ? result.active ? "正在下载" : "排队中" : result.missing ? "有待下载附件" : "下载结束";
       const detail = `已完成 ${result.completed} · 失败 ${result.failed}` +
-        (result.unavailable ? ` · 无法获取帖子 ${result.unavailable}` : "") + (pending ? " · 关闭页面后继续" : "");
+        (result.unavailable ? ` · 无法获取帖子 ${result.unavailable}` : "") + (result.lowres ? ` · 仅缩略图 ${result.lowres}` : "") + (pending ? " · 关闭页面后继续" : "");
       const action = pending ? { label: "停止", run: () => void stopDownloads() } :
         result.failed || result.unavailable || result.status === "stopped" || result.missing ?
           { label: result.missing ? "下载缺失项" : "重试失败项", run: () => void retryDownloads() } : null;

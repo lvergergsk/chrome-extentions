@@ -21,12 +21,14 @@
     try {
       if (typeof value !== "string") return null;
       const url = new URL(value);
-      const match = /^\/data\/([a-f0-9]{2})\/([a-f0-9]{2})\/([a-f0-9]{64})(\.[a-z0-9]{1,10})?$/i.exec(url.pathname);
-      if (url.origin !== "https://file.pawchive.pw" || url.username || url.password || !match ||
-          value.split(/[?#]/)[0] !== url.origin + url.pathname ||
-          match[1].toLowerCase() !== match[3].slice(0, 2).toLowerCase() ||
-          match[2].toLowerCase() !== match[3].slice(2, 4).toLowerCase()) return null;
-      return match[3].toLowerCase();
+      // A thumbnail shares its original's hash but gets its own key, so the original still downloads later.
+      const match = /^(\/thumbnail)?\/data\/([a-f0-9]{2})\/([a-f0-9]{2})\/([a-f0-9]{64})(\.[a-z0-9]{1,10})?$/i.exec(url.pathname);
+      const thumbnail = url.origin === "https://img.pawchive.pw";
+      if (!match || (thumbnail ? !match[1] : url.origin !== "https://file.pawchive.pw" || match[1]) ||
+          url.username || url.password || value.split(/[?#]/)[0] !== url.origin + url.pathname ||
+          match[2].toLowerCase() !== match[4].slice(0, 2).toLowerCase() ||
+          match[3].toLowerCase() !== match[4].slice(2, 4).toLowerCase()) return null;
+      return (thumbnail ? "thumb-" : "") + match[4].toLowerCase();
     } catch { return null; }
   };
 
@@ -80,7 +82,17 @@
           name: safeName(link.getAttribute("download") || parsed.searchParams.get("f") || parsed.pathname.split("/").pop()) });
       }
     }
-    return { ...id, files: [...files.values()], unavailable: unavailable || !files.size,
+    // Images without an archived original still show a thumbnail: keep that best copy until the original appears.
+    for (const image of section.querySelectorAll(".post__files img")) {
+      if (image.closest("a.fileThumb[href]")) continue;
+      let href;
+      try { href = new URL(image.getAttribute("src") || image.getAttribute("data-src"), origin).href; } catch { continue; }
+      const key = mediaKey(href);
+      if (!key?.startsWith("thumb-") || files.has(key.slice(6)) || files.has(key)) continue;
+      files.set(key, { key, url: href, name: "lowres" + (/\.[a-z0-9]{1,10}$/i.exec(href)?.[0] ?? "") });
+    }
+    const lowres = [...files.keys()].some((key) => key.startsWith("thumb-"));
+    return { ...id, files: [...files.values()], lowres, unavailable: unavailable || !files.size,
       unavailableReason: unavailable ? "unsupported" : !files.size ? "unarchived" : null };
   };
 

@@ -185,10 +185,29 @@ test("invalid batch is rejected atomically including missing identifiers and URL
   assert.deepEqual(env.data[STORAGE_KEY].files, {});
 });
 
-test("posts whose page failed to load are not reported as requested", async () => {
+const thumb = (n = 0) => {
+  const hash = media(n).key;
+  return { key: `thumb-${hash}`, url: `https://img.pawchive.pw/thumbnail/data/aa/bb/${hash}.jpg`, name: "lowres.jpg" };
+};
+
+test("only posts with every original count as requested; unloaded, unarchived and thumbnail posts are checked again", async () => {
   const env = fake(), service = createPawchiveService(env.api);
-  await service.submit([one("1", []), { ...one("2", []), unavailable: true, unavailableReason: "fetch-failed" }]);
+  await service.submit([one("1"), { ...one("2", []), unavailable: true, unavailableReason: "fetch-failed" }, one("3", []),
+    { ...one("4", [thumb(4)]), lowres: true }]);
   assert.deepEqual(await service.requested(author), ["1"]);
+  assert.equal((await service.snapshot(one("4"))).lowres, 1);
+});
+
+test("a thumbnail download does not block the original with the same hash", async () => {
+  const env = fake(), service = createPawchiveService(env.api);
+  env.hooks.instant = true;
+  await service.submit([{ ...one("5", [thumb(5)]), lowres: true }]);
+  await service.submit([one("5", [media(5)])]);
+  assert.deepEqual(env.calls.map((call) => call.url), [thumb(5).url, media(5).url]);
+  assert.match(env.calls[0].filename, /lowres-thumb-aabb/);
+  const state = await service.snapshot(one("5"));
+  assert.equal(state.status, "complete");
+  assert.equal(state.lowres, 0);
 });
 
 test("stop preserves other posts sharing the file; author stop cancels the last reference", async () => {

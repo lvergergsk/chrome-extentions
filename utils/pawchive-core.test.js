@@ -77,6 +77,22 @@ test("known posts stop paging at the first page with nothing new and are not rel
   assert.deepEqual(calls, [base, `${base}?o=50`]);
 });
 
+test("thumbnail-only images keep the best copy under a separate key; wrapped thumbnails are skipped", () => {
+  const thumbnail = (key) => `https://img.pawchive.pw/thumbnail/data/${key.slice(0, 2)}/${key.slice(2, 4)}/${key}.jpg`;
+  const other = "ddee" + "f".repeat(60);
+  assert.equal(mediaKey(thumbnail(hash)), `thumb-${hash}`);
+  assert.equal(mediaKey(thumbnail(hash).replace("/thumbnail", "")), null);
+  const img = (src, wrapped = false) => ({ getAttribute: (key) => key === "data-src" ? src : null, closest: () => wrapped ? {} : null });
+  const doc = { querySelector: () => ({ dataset: { service: "fanbox", user: "123", id: "456" },
+    querySelectorAll: (selector) => selector.includes("img") ? [img(thumbnail(hash), true), img(thumbnail(hash)), img(thumbnail(other))] : [link(file)] }) };
+  const result = extractPost(doc, post);
+  assert.deepEqual(result.files.map((item) => item.key), [hash, `thumb-${other}`]);
+  assert.equal(result.files[1].name, "lowres.jpg");
+  assert.equal(result.lowres, true);
+  assert.equal(result.unavailable, false);
+  assert.equal(extractPost(detail([file]), post).lowres, false);
+});
+
 test("a post with no archive or an unsupported attachment never claims all files were identified", () => {
   assert.equal(extractPost(detail([]), post).unavailable, true);
   const partial = extractPost(detail([file, "https://img.pawchive.pw/thumbnail/test.jpg"]), post);
