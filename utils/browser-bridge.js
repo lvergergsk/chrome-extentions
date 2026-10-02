@@ -1,6 +1,6 @@
 import { moveHighlightedTabs, organizeTabs, queueTabWork, tabResult } from "./tabs.js";
 import { readClaudeUsage } from "./claude-usage.js";
-import { addLater, listLater, markLater, TS } from "./slack-later.js";
+import { addLater, listLater, markLater, MARKS, removeLater, TS } from "./slack-later.js";
 
 export const NATIVE_HOST = "com.lvergergsk.gg_browser";
 const RECONNECT_ALARM = "gg-browser-reconnect";
@@ -10,7 +10,8 @@ const METHODS = {
   "claude.usage": [],
   "slack.later.list": [],
   "slack.later.add": ["ts"],
-  "slack.later.mark": ["ts", "completed"],
+  "slack.later.mark": ["ts", "mark"],
+  "slack.later.remove": ["ts"],
   "tabs.list": ["windowId"],
   "tabs.open": ["url", "active", "windowId"],
   "tabs.organize": ["windowId", "sortBy", "includePinned", "dedupe", "apply"],
@@ -33,8 +34,8 @@ export function validateRequest(request) {
       && (typeof params.ts !== "string" || !TS.test(params.ts))) {
     throw new Error("Invalid Slack message timestamp.");
   }
-  if (request.method === "slack.later.mark" && typeof params.completed !== "boolean") {
-    throw new Error("Invalid completed.");
+  if (request.method === "slack.later.mark" && !MARKS.includes(params.mark)) {
+    throw new Error("Invalid Later mark.");
   }
   for (const key of ["active", "includePinned", "dedupe", "apply"]) {
     if (params[key] !== undefined && typeof params[key] !== "boolean") throw new Error(`Invalid ${key}.`);
@@ -68,7 +69,9 @@ export async function dispatchRequest(request, api = chrome) {
     case "slack.later.add":
       return addLater(params.ts);
     case "slack.later.mark":
-      return markLater(params.ts, params.completed);
+      return markLater(params.ts, params.mark);
+    case "slack.later.remove":
+      return removeLater(params.ts);
     case "tabs.list":
       return (await api.tabs.query(params)).filter((tab) => !tab.incognito).map(tabResult);
     case "tabs.open": {
