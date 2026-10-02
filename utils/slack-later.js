@@ -54,24 +54,31 @@ async function withDeadline(work) {
   }
 }
 
-// In-progress Later messages of the session channel, as root timestamps only.
+// Each Later tab is one filter; together they cover every saved item.
+const FILTERS = { saved: "in_progress", completed: "completed", archived: "archived" };
+export const MARKS = ["completed", "uncompleted", "archived", "unarchived"];
+
+// Later messages of the session channel: root timestamp and Later tab only.
 export function listLater(fetchFn = fetch) {
   return withDeadline(async (signal) => {
     const items = [];
-    let cursor = "";
-    for (let page = 0; page < MAX_PAGES; page += 1) {
-      const data = await call("saved.list", {
-        filter: "saved", limit: "50", include_tombstones: "false", ...(cursor && { cursor }),
-      }, fetchFn, signal);
-      for (const item of Array.isArray(data.saved_items) ? data.saved_items : []) {
-        if (item?.item_type === "message" && item.item_id === CHANNEL && TS.test(item.ts)) {
-          items.push({ ts: item.ts });
+    for (const [filter, state] of Object.entries(FILTERS)) {
+      let cursor = "";
+      for (let page = 0; ; page += 1) {
+        if (page === MAX_PAGES) throw failure("saved.list", "too_many_pages");
+        const data = await call("saved.list", {
+          filter, limit: "50", include_tombstones: "false", ...(cursor && { cursor }),
+        }, fetchFn, signal);
+        for (const item of Array.isArray(data.saved_items) ? data.saved_items : []) {
+          if (item?.item_type === "message" && item.item_id === CHANNEL && TS.test(item.ts)) {
+            items.push({ ts: item.ts, state });
+          }
         }
+        cursor = data.response_metadata?.next_cursor || "";
+        if (!cursor) break;
       }
-      cursor = data.response_metadata?.next_cursor || "";
-      if (!cursor) return items;
     }
-    throw failure("saved.list", "too_many_pages");
+    return items;
   });
 }
 
@@ -82,13 +89,21 @@ export function addLater(ts, fetchFn = fetch) {
   });
 }
 
-export function markLater(ts, completed, fetchFn = fetch) {
+export function markLater(ts, mark, fetchFn = fetch) {
   return withDeadline(async (signal) => {
+    // The web client sends date_due only when toggling completion.
     await call("saved.update", {
-      item_type: "message", item_id: CHANNEL, ts, date_due: "0",
-      mark: completed ? "completed" : "uncompleted",
+      item_type: "message", item_id: CHANNEL, ts, mark,
+      ...(mark.endsWith("completed") && { date_due: "0" }),
     }, fetchFn, signal);
-    return { ts, completed };
+    return { ts, mark };
+  });
+}
+
+export function removeLater(ts, fetchFn = fetch) {
+  return withDeadline(async (signal) => {
+    await call("saved.delete", { item_type: "message", item_id: CHANNEL, ts }, fetchFn, signal);
+    return { ts };
   });
 }
 
